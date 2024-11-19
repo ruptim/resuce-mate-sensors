@@ -1,0 +1,3 @@
+[submodule "RIOT"]
+	path = RIOT
+	url = https://github.com/ruptim/RIOT_Mi_Master.git
