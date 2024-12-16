@@ -18,6 +18,10 @@ QUIET ?= 1
 USEMODULE += dwax509m183x0
 USEMODULE += reed_sensor_driver
 
+
 FEATURES_REQUIRED += periph_adc
+
+USEPKG += tinycbor
+
 
 include $(RIOTBASE)/Makefile.include
