@@ -24,7 +24,8 @@
 
 #include "msg.h"
 #include "thread.h"
-#include "periph/rtc.h"
+#include "ztimer.h"
+ 
 
 #include "cbor.h"
 
@@ -49,11 +50,14 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 gpio_t nc_pin = GPIO_PIN(0, 8);
 gpio_t no_pin = GPIO_PIN(0, 6);
 
+
 typedef struct
 {
     kernel_pid_t pid; // thread that receives the msg
     msg_t msg;        // preallocated scratchspace for msg;
 } alarm_cb_args_t;
+
+
 
 void dwax_alarm_cb(void *arg)
 {
@@ -62,15 +66,15 @@ void dwax_alarm_cb(void *arg)
     msg_send_int(&cb_args->msg, cb_args->pid);
 }
 
-void get_future_time_s(struct tm *time, uint32_t seconds)
-{
-    rtc_get_time(time);
+// void get_future_time_s(struct tm *time, uint32_t seconds)
+// {
+//     rtc_get_time(time);
 
-    time_t now_epoch = mktime(time);
-    time_t alarm_epoch = now_epoch + seconds;
+//     time_t now_epoch = mktime(time);
+//     time_t alarm_epoch = now_epoch + seconds;
 
-    gmtime_r(&alarm_epoch, time);
-}
+//     gmtime_r(&alarm_epoch, time);
+// }
 
 void reed_nc_callback(void *args)
 {
@@ -132,11 +136,15 @@ int send_data(uint8_t *cbor_buf, size_t buf_size)
     return 0;
 }
 
+
 static dwax509m183x0_t sensor_01;
 static reed_sensor_driver_t sensor_02;
 
 #define NUM_SENSORS 3
 static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
+
+#define ALARM_TIMER_INTERVAL_S 5 //60 * 60
+ztimer_t alarm_timer;
 
 #define CBOR_BUF_SIZE 40 
 
@@ -176,11 +184,10 @@ int main(void)
     alarm_cb_args[0].msg.content.ptr = (void *)&sensor_01;
 
     // // Get a timestamp in one hour
-    rtc_init();
+    alarm_timer.callback = dwax_alarm_cb;
+    alarm_timer.arg = &alarm_cb_args[0];
+    ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
 
-    struct tm time = (struct tm){ 0 };
-    get_future_time_s(&time, 3600);
-    rtc_set_alarm(&time, &dwax_alarm_cb, &alarm_cb_args[0]);
 
     static int event_counter = 0;
     static int seq_num = 0;
@@ -199,10 +206,13 @@ int main(void)
         {
         case SENSOR_DWAX509M183X0:
             (void)sensor_id;
-            dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
-            int distance_um = dwax509m183x0_distance_um(dev);
-            get_future_time_s(&time, 3600);
-            rtc_set_alarm(&time, &dwax_alarm_cb, &alarm_cb_args[sensor_id]);
+            // dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
+            // int distance_um = dwax509m183x0_distance_um(dev);
+            int distance_um = 69;
+
+            ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
+
+
             sensor_data[sensor_id] = distance_um;
             event_counter++;
 

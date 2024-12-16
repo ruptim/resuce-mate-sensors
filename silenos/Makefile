@@ -17,6 +17,7 @@ QUIET ?= 1
 
 USEMODULE += dwax509m183x0
 USEMODULE += reed_sensor_driver
+USEMODULE += ztimer_sec
 
 
 FEATURES_REQUIRED += periph_adc
