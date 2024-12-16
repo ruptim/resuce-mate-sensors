@@ -42,7 +42,7 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 #define SENSOR_REED_SWITCH_NC 2
 #define SENSOR_REED_SWITCH_NO 3
 
-#define REED_SENSOR_DEBOUNCE_MS 20
+#define REED_SENSOR_DEBOUNCE_MS 60
 gpio_t nc_pin = GPIO_PIN(0, 8);
 gpio_t no_pin = GPIO_PIN(0, 6);
 
@@ -74,26 +74,17 @@ void get_future_time_s(struct tm *time, uint32_t seconds)
 void reed_nc_callback(void *args)
 {
     (void)args;
+    alarm_cb_args_t * msg_args = (alarm_cb_args_t*) args;
 
-
-    msg_t msg = {
-        .type = (SENSOR_REED_SWITCH_NC << 8) | (1),
-        .content.ptr = (void *)&sensor_02
-    };
-
-    msg_send_int(&msg, (kernel_pid_t)args);
+    msg_send_int(&msg_args->msg, msg_args->pid);
 }
 
 void reed_no_callback(void *args)
 {
     (void)args;
-
-    msg_t msg = {
-        .type = (SENSOR_REED_SWITCH_NO << 8) | (0),
-        .content.ptr = (void *)&sensor_02
-    };
-
-    msg_send_int(&msg, (kernel_pid_t)args);
+    alarm_cb_args_t * msg_args = (alarm_cb_args_t*) args;
+   
+    msg_send_int(&msg_args->msg, msg_args->pid);
 
 }
 
@@ -101,7 +92,7 @@ void reed_no_callback(void *args)
 static dwax509m183x0_t sensor_01;
 static reed_sensor_driver_t sensor_02;
 
-#define NUM_SENSORS 1
+#define NUM_SENSORS 3
 static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
 
 int main(void)
@@ -113,6 +104,13 @@ int main(void)
     // Initialize all connected sensors
     dwax509m183x0_init(&sensor_01, &dwax509m183x0_params[0]);
 
+    alarm_cb_args[1].pid = thread_getpid();
+    alarm_cb_args[1].msg.type = (SENSOR_REED_SWITCH_NC << 8) | (1);
+    alarm_cb_args[1].msg.content.ptr = (void *)&sensor_02;
+
+    alarm_cb_args[2].pid = thread_getpid();
+    alarm_cb_args[2].msg.type = (SENSOR_REED_SWITCH_NO << 8) | (2);
+    alarm_cb_args[2].msg.content.ptr = (void *)&sensor_02;
 
     reed_sensor_driver_params_t params = { .nc_pin = nc_pin,
                                            .no_pin = no_pin,
@@ -120,8 +118,8 @@ int main(void)
                                            .no_int_flank = GPIO_BOTH,
                                            .nc_callback = reed_nc_callback,
                                            .no_callback = reed_no_callback,
-                                           .nc_callback_args = (void *)thread_getpid(),
-                                           .no_callback_args = (void *)thread_getpid(),
+                                           .nc_callback_args = (void *)&alarm_cb_args[1],
+                                           .no_callback_args = (void *)&alarm_cb_args[2],
                                            .use_external_pulldown = false,
                                            .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
 
@@ -134,12 +132,14 @@ int main(void)
     alarm_cb_args[0].msg.type = (SENSOR_DWAX509M183X0 << 8) | (0);
     alarm_cb_args[0].msg.content.ptr = (void *)&sensor_01;
 
-    // Get a timestamp in one hour
-    rtc_init();
 
-    struct tm time = (struct tm){ 0 };
-    get_future_time_s(&time, 3600);
-    rtc_set_alarm(&time, &dwax_alarm_cb, &alarm_cb_args[0]);
+
+    // // Get a timestamp in one hour
+    // rtc_init();
+
+    // struct tm time = (struct tm){ 0 };
+    // get_future_time_s(&time, 3600);
+    // rtc_set_alarm(&time, &dwax_alarm_cb, &alarm_cb_args[0]);
 
 
     msg_t msg;
@@ -150,23 +150,26 @@ int main(void)
 
         switch (sensor_type) {
         case SENSOR_DWAX509M183X0:
-
-            dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
-            int distance_um = dwax509m183x0_distance_um(dev);
-            get_future_time_s(&time, 3600);
-            rtc_set_alarm(&time, &dwax_alarm_cb, &alarm_cb_args[sensor_id]);
+            (void) sensor_id;
+            // dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
+            // int distance_um = dwax509m183x0_distance_um(dev);
+            // get_future_time_s(&time, 3600);
+            // rtc_set_alarm(&time, &dwax_alarm_cb, &alarm_cb_args[sensor_id]);
+            // (void) distance_um;
 
             break;
         case SENSOR_REED_SWITCH_NC:
-            reed_sensor_driver_t *dev = (reed_sensor_driver_t *)msg.content.ptr;
+            reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;
             reed_sensor_val_t nc_val;
-            reed_sensor_driver_read_nc(dev, &nc_val);
+            reed_sensor_driver_read_nc(reed_nc, &nc_val);
+            printf("NC: %d\n",nc_val);
 
             break;
         case SENSOR_REED_SWITCH_NO:
-            reed_sensor_driver_t *dev = (reed_sensor_driver_t *)msg.content.ptr;
+            reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
             reed_sensor_val_t no_val;
-            reed_sensor_driver_read_no(dev, &no_val);
+            reed_sensor_driver_read_no(reed_no, &no_val);
+            printf("NO: %d\n",no_val);
 
             break;
         }
