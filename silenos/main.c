@@ -35,7 +35,7 @@
 #include "reed_sensor_driver.h"
 #include "reed_sensor_driver_params.h"
 
-#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define RCV_QUEUE_SIZE 4
@@ -65,16 +65,6 @@ void dwax_alarm_cb(void *arg)
 
     msg_send_int(&cb_args->msg, cb_args->pid);
 }
-
-// void get_future_time_s(struct tm *time, uint32_t seconds)
-// {
-//     rtc_get_time(time);
-
-//     time_t now_epoch = mktime(time);
-//     time_t alarm_epoch = now_epoch + seconds;
-
-//     gmtime_r(&alarm_epoch, time);
-// }
 
 void reed_nc_callback(void *args)
 {
@@ -143,7 +133,7 @@ static reed_sensor_driver_t sensor_02;
 #define NUM_SENSORS 3
 static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
 
-#define ALARM_TIMER_INTERVAL_S 5 //60 * 60
+#define ALARM_TIMER_INTERVAL_S 60 * 60
 ztimer_t alarm_timer;
 
 #define CBOR_BUF_SIZE 40 
@@ -206,12 +196,10 @@ int main(void)
         {
         case SENSOR_DWAX509M183X0:
             (void)sensor_id;
-            // dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
-            // int distance_um = dwax509m183x0_distance_um(dev);
-            int distance_um = 69;
+            dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
+            int distance_um = dwax509m183x0_distance_um(dev);
 
             ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
-
 
             sensor_data[sensor_id] = distance_um;
             event_counter++;
@@ -249,6 +237,7 @@ int main(void)
                 printf("\n");
             }
         }
+        gpio_toggle(LED0_PIN);
     }
 
     return 0;
