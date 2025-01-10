@@ -35,8 +35,17 @@
 #include "reed_sensor_driver.h"
 #include "reed_sensor_driver_params.h"
 
+// Configure run parameters 
+
 #define ENABLE_DEBUG 1
 #include "debug.h"
+
+#define AGGREGATE_DATA 1
+
+// --------------
+
+
+
 
 #define RCV_QUEUE_SIZE 4
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
@@ -59,6 +68,7 @@ typedef struct
 
 
 
+
 void dwax_alarm_cb(void *arg)
 {
     alarm_cb_args_t *cb_args = (alarm_cb_args_t *)arg;
@@ -72,6 +82,17 @@ void reed_nc_callback(void *args)
     alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
 
     msg_send_int(&msg_args->msg, msg_args->pid);
+}
+
+
+void reed_nc_callback_and_dwax_trigger(void *args)
+{
+    (void)args;
+    alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
+
+    
+    msg_send_int(&msg_args[1].msg, msg_args[1].pid);
+    msg_send_int(&msg_args[0].msg, msg_args[0].pid);
 }
 
 void reed_no_callback(void *args)
@@ -147,6 +168,16 @@ int main(void)
     // Initialize all connected sensors
     dwax509m183x0_init(&sensor_01, &dwax509m183x0_params[0]);
 
+        // Set up alarms / irqs for all the sensors (i.e. decide whether they shall be called via timer isr, gpio isr etc)
+    alarm_cb_args[0].pid = thread_getpid();
+    alarm_cb_args[0].msg.type = (SENSOR_DWAX509M183X0 << 8) | (0);
+    alarm_cb_args[0].msg.content.ptr = (void *)&sensor_01;
+
+    // // Get a timestamp in one hour
+    alarm_timer.callback = dwax_alarm_cb;
+    alarm_timer.arg = &alarm_cb_args[0];
+    // ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
+
     alarm_cb_args[1].pid = thread_getpid();
     alarm_cb_args[1].msg.type = (SENSOR_REED_SWITCH_NC << 8) | (1);
     alarm_cb_args[1].msg.content.ptr = (void *)&sensor_02;
@@ -155,34 +186,32 @@ int main(void)
     alarm_cb_args[2].msg.type = (SENSOR_REED_SWITCH_NO << 8) | (2);
     alarm_cb_args[2].msg.content.ptr = (void *)&sensor_02;
 
+
+
     reed_sensor_driver_params_t params = {.nc_pin = nc_pin,
                                           .no_pin = no_pin,
                                           .nc_int_flank = GPIO_BOTH,
                                           .no_int_flank = GPIO_BOTH,
-                                          .nc_callback = reed_nc_callback,
+                                        //   .nc_callback = reed_nc_callback,
+                                          .nc_callback = reed_nc_callback_and_dwax_trigger,
                                           .no_callback = reed_no_callback,
-                                          .nc_callback_args = (void *)&alarm_cb_args[1],
+                                          .nc_callback_args = (void *)&alarm_cb_args, // Note: passing the whole array to be able to access the callback of dawx too 
+                                        //   .nc_callback_args = (void *)&alarm_cb_args[1], 
                                           .no_callback_args = (void *)&alarm_cb_args[2],
                                           .use_external_pulldown = false,
                                           .debounce_ms = REED_SENSOR_DEBOUNCE_MS};
 
     reed_sensor_driver_init(&sensor_02, &params);
 
-    // Set up alarms / irqs for all the sensors (i.e. decide whether they shall be called via timer isr, gpio isr etc)
-    alarm_cb_args[0].pid = thread_getpid();
-    alarm_cb_args[0].msg.type = (SENSOR_DWAX509M183X0 << 8) | (0);
-    alarm_cb_args[0].msg.content.ptr = (void *)&sensor_01;
 
-    // // Get a timestamp in one hour
-    alarm_timer.callback = dwax_alarm_cb;
-    alarm_timer.arg = &alarm_cb_args[0];
-    ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
 
 
     static int event_counter = 0;
     static int seq_num = 0;
 
     int sensor_data[NUM_SENSORS] = {0};
+    int sensors_done = 0;
+    int all_sensors_done = (0x1 << NUM_SENSORS) -1;
 
 
     msg_t msg;
@@ -199,10 +228,9 @@ int main(void)
             dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
             int distance_um = dwax509m183x0_distance_um(dev);
 
-            ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
-
+            // ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
             sensor_data[sensor_id] = distance_um;
-            event_counter++;
+            event_counter++;            
 
             break;
         case SENSOR_REED_SWITCH_NC:
@@ -211,7 +239,6 @@ int main(void)
             reed_sensor_driver_read_nc(reed_nc, &nc_val);
             sensor_data[sensor_id] = nc_val;
             event_counter++;
-
             break;
         case SENSOR_REED_SWITCH_NO:
             reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
@@ -222,19 +249,30 @@ int main(void)
 
             break;
         }
-        uint8_t cbor_buf[CBOR_BUF_SIZE];
-        if (encode_data(cbor_buf, CBOR_BUF_SIZE, sensor_data, NUM_SENSORS, event_counter, seq_num) == 0)
-        {
-            send_data(cbor_buf, CBOR_BUF_SIZE);
-            seq_num++;
-            
-            if (ENABLE_DEBUG)
+        sensors_done |= 0x1 << sensor_id;
+        // if AGGREGATE_DATA: only send if received the latest values from all sensors 
+        if ((AGGREGATE_DATA && sensors_done == all_sensors_done) || !AGGREGATE_DATA) {
+            sensors_done = 0;
+
+            uint8_t cbor_buf[CBOR_BUF_SIZE];
+            if (encode_data(cbor_buf, CBOR_BUF_SIZE, sensor_data, NUM_SENSORS, event_counter, seq_num) == 0)
             {
-                for (size_t i = 0; i < CBOR_BUF_SIZE; i++)
+                send_data(cbor_buf, CBOR_BUF_SIZE);
+                seq_num++;
+                
+                if (ENABLE_DEBUG)
                 {
-                    printf("%02X", cbor_buf[i]);
+                    // for (size_t i = 0; i < CBOR_BUF_SIZE; i++)
+                    // {
+                    //     printf("%02X", cbor_buf[i]);
+                    // }
+                    // printf("\n");
+                    for (size_t i = 0; i < NUM_SENSORS; i++)
+                    {
+                        printf("%d, ", sensor_data[i]);
+                    }
+                    printf("\n");
                 }
-                printf("\n");
             }
         }
     }
