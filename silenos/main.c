@@ -35,7 +35,7 @@
 #include "reed_sensor_driver.h"
 #include "reed_sensor_driver_params.h"
 
-#define ENABLE_DEBUG 0
+#define ENABLE_DEBUG 1
 #include "debug.h"
 
 #define RCV_QUEUE_SIZE 4
@@ -47,8 +47,8 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 #define SENSOR_REED_SWITCH_NO 3
 
 #define REED_SENSOR_DEBOUNCE_MS 60
-gpio_t nc_pin = GPIO_PIN(0, 8);
-gpio_t no_pin = GPIO_PIN(0, 6);
+gpio_t nc_pin = GPIO_PIN(0,6); // D11
+gpio_t no_pin = GPIO_PIN(1, 9); // D13
 
 
 typedef struct
@@ -232,12 +232,11 @@ int main(void)
             {
                 for (size_t i = 0; i < CBOR_BUF_SIZE; i++)
                 {
-                    printf("%02X ", cbor_buf[i]);
+                    printf("%02X", cbor_buf[i]);
                 }
                 printf("\n");
             }
         }
-        gpio_toggle(LED0_PIN);
     }
 
     return 0;
