@@ -25,27 +25,25 @@
 #include "msg.h"
 #include "thread.h"
 #include "ztimer.h"
- 
 
 #include "cbor.h"
 
+/* driver headers */
 #include "dwax509m183x0.h"
 #include "dwax509m183x0_params.h"
 
 #include "reed_sensor_driver.h"
 #include "reed_sensor_driver_params.h"
 
-// Configure run parameters 
+/* Application headers */
 
+#include "lora_networking.h"
+
+/* Configure run parameters */
+
+// - debug output
 #define ENABLE_DEBUG 1
 #include "debug.h"
-
-#define AGGREGATE_DATA 1
-
-// --------------
-
-
-
 
 #define RCV_QUEUE_SIZE 4
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
@@ -56,18 +54,31 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 #define SENSOR_REED_SWITCH_NO 3
 
 #define REED_SENSOR_DEBOUNCE_MS 60
-gpio_t nc_pin = GPIO_PIN(0,6); // D11
+gpio_t nc_pin = GPIO_PIN(0, 6); // D11
 gpio_t no_pin = GPIO_PIN(1, 9); // D13
 
+// - Sensor config
+static dwax509m183x0_t sensor_01;
+static reed_sensor_driver_t sensor_02; // 2 "sensors" in one (normally-open, normally-closed)
+
+#define NUM_SENSORS 3
+static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
+
+// - dwax timer
+#define ALARM_TIMER_INTERVAL_S 60 * 60
+ztimer_t alarm_timer;
+
+// - sensor data
+#define CBOR_BUF_SIZE 40
+#define AGGREGATE_DATA 1
+
+/* ------------------------ */
 
 typedef struct
 {
     kernel_pid_t pid; // thread that receives the msg
     msg_t msg;        // preallocated scratchspace for msg;
 } alarm_cb_args_t;
-
-
-
 
 void dwax_alarm_cb(void *arg)
 {
@@ -76,6 +87,11 @@ void dwax_alarm_cb(void *arg)
     msg_send_int(&cb_args->msg, cb_args->pid);
 }
 
+/**
+ * @brief Callback function the normally-closed pin of the reed switch triggering the readout of the NC pin.
+ *
+ * @param args the void* of the alarm_cb_args_t struct.
+ */
 void reed_nc_callback(void *args)
 {
     (void)args;
@@ -84,17 +100,11 @@ void reed_nc_callback(void *args)
     msg_send_int(&msg_args->msg, msg_args->pid);
 }
 
-
-void reed_nc_callback_and_dwax_trigger(void *args)
-{
-    (void)args;
-    alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
-
-    
-    msg_send_int(&msg_args[1].msg, msg_args[1].pid);
-    msg_send_int(&msg_args[0].msg, msg_args[0].pid);
-}
-
+/**
+ * @brief Callback function the normally-open pin of the reed switch triggering the readout of the NO pin.
+ *
+ * @param args the void* of the alarm_cb_args_t struct.
+ */
 void reed_no_callback(void *args)
 {
     (void)args;
@@ -103,6 +113,32 @@ void reed_no_callback(void *args)
     msg_send_int(&msg_args->msg, msg_args->pid);
 }
 
+/**
+ * @brief Callback function for the normally-closed pin of the reed switch, which also triggers the readout of the
+ *        dwax... sensor.
+ *
+ * @param args the complete alarm_cb_args_t array with the dwax config at [0] and the nc config at [1].
+ */
+void reed_nc_callback_and_dwax_trigger(void *args)
+{
+    (void)args;
+    alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
+
+    msg_send_int(&msg_args[1].msg, msg_args[1].pid);
+    msg_send_int(&msg_args[0].msg, msg_args[0].pid);
+}
+
+/**
+ * @brief Encodes the given sensor data array in cbor.
+ *
+ * @param buf           cbor buffer for the encoded data
+ * @param buf_size      len of the cbor buffer
+ * @param data          sensor data array
+ * @param data_len      len of the sensor data array
+ * @param event_counter current number of occurred events
+ * @param seq_num       current sequence number
+ * @return              -1 when failing to encode the data.
+ */
 int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int event_counter, int seq_num)
 {
     int ret = 0;
@@ -138,26 +174,18 @@ int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int even
     return 0;
 }
 
-int send_data(uint8_t *cbor_buf, size_t buf_size)
+/**
+ * @brief Send the data via the implemented network stack.
+ * 
+ * @param cbor_buf the cbor encoded data to send
+ * @param buf_size size of the cbor buffer
+ */
+void send_data(uint8_t *cbor_buf, size_t buf_size)
 {
-    // todo;
-    (void)cbor_buf;
-    (void)buf_size;
-
-    return 0;
+    lora_send_data(cbor_buf, buf_size);
 }
 
 
-static dwax509m183x0_t sensor_01;
-static reed_sensor_driver_t sensor_02;
-
-#define NUM_SENSORS 3
-static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
-
-#define ALARM_TIMER_INTERVAL_S 60 * 60
-ztimer_t alarm_timer;
-
-#define CBOR_BUF_SIZE 40 
 
 int main(void)
 {
@@ -168,7 +196,7 @@ int main(void)
     // Initialize all connected sensors
     dwax509m183x0_init(&sensor_01, &dwax509m183x0_params[0]);
 
-        // Set up alarms / irqs for all the sensors (i.e. decide whether they shall be called via timer isr, gpio isr etc)
+    // Set up alarms / irqs for all the sensors (i.e. decide whether they shall be called via timer isr, gpio isr etc)
     alarm_cb_args[0].pid = thread_getpid();
     alarm_cb_args[0].msg.type = (SENSOR_DWAX509M183X0 << 8) | (0);
     alarm_cb_args[0].msg.content.ptr = (void *)&sensor_01;
@@ -186,33 +214,27 @@ int main(void)
     alarm_cb_args[2].msg.type = (SENSOR_REED_SWITCH_NO << 8) | (2);
     alarm_cb_args[2].msg.content.ptr = (void *)&sensor_02;
 
-
-
     reed_sensor_driver_params_t params = {.nc_pin = nc_pin,
                                           .no_pin = no_pin,
                                           .nc_int_flank = GPIO_BOTH,
                                           .no_int_flank = GPIO_BOTH,
-                                        //   .nc_callback = reed_nc_callback,
+                                          //   .nc_callback = reed_nc_callback,
                                           .nc_callback = reed_nc_callback_and_dwax_trigger,
                                           .no_callback = reed_no_callback,
-                                          .nc_callback_args = (void *)&alarm_cb_args, // Note: passing the whole array to be able to access the callback of dawx too 
-                                        //   .nc_callback_args = (void *)&alarm_cb_args[1], 
+                                          .nc_callback_args = (void *)&alarm_cb_args, // Note: passing the whole array to be able to access the callback of dawx too
+                                                                                      //   .nc_callback_args = (void *)&alarm_cb_args[1],
                                           .no_callback_args = (void *)&alarm_cb_args[2],
                                           .use_external_pulldown = false,
                                           .debounce_ms = REED_SENSOR_DEBOUNCE_MS};
 
     reed_sensor_driver_init(&sensor_02, &params);
 
-
-
-
     static int event_counter = 0;
     static int seq_num = 0;
 
     int sensor_data[NUM_SENSORS] = {0};
     int sensors_done = 0;
-    int all_sensors_done = (0x1 << NUM_SENSORS) -1;
-
+    int all_sensors_done = (0x1 << NUM_SENSORS) - 1;
 
     msg_t msg;
     while (true)
@@ -230,7 +252,7 @@ int main(void)
 
             // ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
             sensor_data[sensor_id] = distance_um;
-            event_counter++;            
+            event_counter++;
 
             break;
         case SENSOR_REED_SWITCH_NC:
@@ -250,8 +272,9 @@ int main(void)
             break;
         }
         sensors_done |= 0x1 << sensor_id;
-        // if AGGREGATE_DATA: only send if received the latest values from all sensors 
-        if ((AGGREGATE_DATA && sensors_done == all_sensors_done) || !AGGREGATE_DATA) {
+        // if AGGREGATE_DATA: only send if received the latest values from all sensors
+        if ((AGGREGATE_DATA && sensors_done == all_sensors_done) || !AGGREGATE_DATA)
+        {
             sensors_done = 0;
 
             uint8_t cbor_buf[CBOR_BUF_SIZE];
@@ -259,7 +282,7 @@ int main(void)
             {
                 send_data(cbor_buf, CBOR_BUF_SIZE);
                 seq_num++;
-                
+
                 if (ENABLE_DEBUG)
                 {
                     // for (size_t i = 0; i < CBOR_BUF_SIZE; i++)
