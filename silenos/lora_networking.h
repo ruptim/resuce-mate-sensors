@@ -25,7 +25,7 @@ static const uint8_t appkey[LORAMAC_APPKEY_LEN] = { 0x00, 0x00, 0x00, 0x00, \
                                                     0x00, 0x00, 0x00, 0x00 };
 
 
-int init_lora_stack(){
+int init_lora_stack(void){
 
     // gnrc_netreg_entry_t dump = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
     //                                                       gnrc_pktdump_pid);
@@ -48,7 +48,7 @@ int init_lora_stack(){
     }
     puts("Join procedure succeeded");
  
-    
+    return 0;
 }
 
 int lora_send_data(uint8_t* data, size_t data_len){
@@ -57,5 +57,5 @@ int lora_send_data(uint8_t* data, size_t data_len){
                              data, data_len) != SEMTECH_LORAMAC_TX_DONE) {        
         return 1;
     }
-    return -1;
+    return 0;
 }

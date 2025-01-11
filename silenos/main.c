@@ -57,13 +57,6 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 gpio_t nc_pin = GPIO_PIN(0, 6); // D11
 gpio_t no_pin = GPIO_PIN(1, 9); // D13
 
-// - Sensor config
-static dwax509m183x0_t sensor_01;
-static reed_sensor_driver_t sensor_02; // 2 "sensors" in one (normally-open, normally-closed)
-
-#define NUM_SENSORS 3
-static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
-
 // - dwax timer
 #define ALARM_TIMER_INTERVAL_S 60 * 60
 ztimer_t alarm_timer;
@@ -182,9 +175,21 @@ int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int even
  */
 void send_data(uint8_t *cbor_buf, size_t buf_size)
 {
+    (void) cbor_buf;
+    (void) buf_size;
     lora_send_data(cbor_buf, buf_size);
 }
 
+
+
+/* Sensor config */
+
+static dwax509m183x0_t sensor_01;
+static reed_sensor_driver_t sensor_02; // 2 "sensors" in one (normally-open, normally-closed)
+
+
+#define NUM_SENSORS 3
+static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
 
 
 int main(void)
@@ -192,6 +197,10 @@ int main(void)
     puts("Generated RIOT application: 'rescue_mate'");
     msg_init_queue(rcv_queue, RCV_QUEUE_SIZE);
     memset(alarm_cb_args, 0, sizeof(alarm_cb_args));
+
+    if(init_lora_stack() != 0){
+        exit(EXIT_FAILURE);
+    }
 
     // Initialize all connected sensors
     dwax509m183x0_init(&sensor_01, &dwax509m183x0_params[0]);
