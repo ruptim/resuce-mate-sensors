@@ -177,7 +177,7 @@ void send_data(uint8_t *cbor_buf, size_t buf_size)
 {
     (void) cbor_buf;
     (void) buf_size;
-    lora_send_data(cbor_buf, buf_size);
+    // lora_send_data(cbor_buf, buf_size);
 }
 
 
@@ -198,9 +198,9 @@ int main(void)
     msg_init_queue(rcv_queue, RCV_QUEUE_SIZE);
     memset(alarm_cb_args, 0, sizeof(alarm_cb_args));
 
-    if(init_lora_stack() != 0){
-        exit(EXIT_FAILURE);
-    }
+    // if(init_lora_stack() != 0){
+    //     exit(EXIT_FAILURE);
+    // }
 
     // Initialize all connected sensors
     dwax509m183x0_init(&sensor_01, &dwax509m183x0_params[0]);
