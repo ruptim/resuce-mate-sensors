@@ -58,7 +58,7 @@ gpio_t nc_pin = GPIO_PIN(0, 6); // D11
 gpio_t no_pin = GPIO_PIN(1, 9); // D13
 
 // - dwax timer
-#define ALARM_TIMER_INTERVAL_S 60 * 60
+#define ALARM_TIMER_INTERVAL_S 1
 ztimer_t alarm_timer;
 
 // - sensor data
@@ -169,28 +169,24 @@ int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int even
 
 /**
  * @brief Send the data via the implemented network stack.
- * 
+ *
  * @param cbor_buf the cbor encoded data to send
  * @param buf_size size of the cbor buffer
  */
 void send_data(uint8_t *cbor_buf, size_t buf_size)
 {
-    (void) cbor_buf;
-    (void) buf_size;
+    (void)cbor_buf;
+    (void)buf_size;
     // lora_send_data(cbor_buf, buf_size);
 }
-
-
 
 /* Sensor config */
 
 static dwax509m183x0_t sensor_01;
 static reed_sensor_driver_t sensor_02; // 2 "sensors" in one (normally-open, normally-closed)
 
-
 #define NUM_SENSORS 3
 static alarm_cb_args_t alarm_cb_args[NUM_SENSORS];
-
 
 int main(void)
 {
@@ -211,9 +207,8 @@ int main(void)
     alarm_cb_args[0].msg.content.ptr = (void *)&sensor_01;
 
     // // Get a timestamp in one hour
-    alarm_timer.callback = dwax_alarm_cb;
-    alarm_timer.arg = &alarm_cb_args[0];
-    // ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
+    // alarm_timer.callback = dwax_alarm_cb;
+    // alarm_timer.arg = &alarm_cb_args[0];
 
     alarm_cb_args[1].pid = thread_getpid();
     alarm_cb_args[1].msg.type = (SENSOR_REED_SWITCH_NC << 8) | (1);
@@ -222,6 +217,10 @@ int main(void)
     alarm_cb_args[2].pid = thread_getpid();
     alarm_cb_args[2].msg.type = (SENSOR_REED_SWITCH_NO << 8) | (2);
     alarm_cb_args[2].msg.content.ptr = (void *)&sensor_02;
+
+    alarm_timer.callback = reed_nc_callback_and_dwax_trigger;
+    alarm_timer.arg = &alarm_cb_args;
+    ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
 
     reed_sensor_driver_params_t params = {.nc_pin = nc_pin,
                                           .no_pin = no_pin,
@@ -248,65 +247,70 @@ int main(void)
     msg_t msg;
     while (true)
     {
-        msg_receive(&msg);
-        uint8_t const sensor_type = msg.type >> 8;
-        uint8_t const sensor_id = msg.type & 0x00FF;
-
-        switch (sensor_type)
+        //     msg_receive(&msg);
+        for (int i = 0; i < NUM_SENSORS; i++)
         {
-        case SENSOR_DWAX509M183X0:
-            (void)sensor_id;
-            dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
-            int distance_um = dwax509m183x0_distance_um(dev);
-
-            // ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
-            sensor_data[sensor_id] = distance_um;
-            event_counter++;
-
-            break;
-        case SENSOR_REED_SWITCH_NC:
-            reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;
-            reed_sensor_val_t nc_val;
-            reed_sensor_driver_read_nc(reed_nc, &nc_val);
-            sensor_data[sensor_id] = nc_val;
-            event_counter++;
-            break;
-        case SENSOR_REED_SWITCH_NO:
-            reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
-            reed_sensor_val_t no_val;
-            reed_sensor_driver_read_no(reed_no, &no_val);
-            sensor_data[sensor_id] = no_val;
-            event_counter++;
-
-            break;
-        }
-        sensors_done |= 0x1 << sensor_id;
-        // if AGGREGATE_DATA: only send if received the latest values from all sensors
-        if ((AGGREGATE_DATA && sensors_done == all_sensors_done) || !AGGREGATE_DATA)
-        {
-            sensors_done = 0;
-
-            uint8_t cbor_buf[CBOR_BUF_SIZE];
-            if (encode_data(cbor_buf, CBOR_BUF_SIZE, sensor_data, NUM_SENSORS, event_counter, seq_num) == 0)
+            msg = alarm_cb_args[i].msg;
+            uint8_t const sensor_type = msg.type >> 8;
+            uint8_t const sensor_id = msg.type & 0x00FF;
+            switch (sensor_type)
             {
-                send_data(cbor_buf, CBOR_BUF_SIZE);
-                seq_num++;
+            case SENSOR_DWAX509M183X0:
+                (void)sensor_id;
+                dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
+                int distance_um = dwax509m183x0_distance_um(dev);
 
-                if (ENABLE_DEBUG)
+                // ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
+                sensor_data[sensor_id] = distance_um;
+                event_counter++;
+
+                break;
+            case SENSOR_REED_SWITCH_NC:
+                ztimer_set(ZTIMER_SEC, &alarm_timer, ALARM_TIMER_INTERVAL_S);
+                reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;
+                reed_sensor_val_t nc_val;
+                reed_sensor_driver_read_nc(reed_nc, &nc_val);
+                sensor_data[sensor_id] = nc_val;
+                event_counter++;
+                break;
+            case SENSOR_REED_SWITCH_NO:
+                reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
+                reed_sensor_val_t no_val;
+                reed_sensor_driver_read_no(reed_no, &no_val);
+                sensor_data[sensor_id] = no_val;
+                event_counter++;
+
+                break;
+            }
+            sensors_done |= 0x1 << sensor_id;
+            // if AGGREGATE_DATA: only send if received the latest values from all sensors
+            if ((AGGREGATE_DATA && sensors_done == all_sensors_done) || !AGGREGATE_DATA)
+            {
+                sensors_done = 0;
+
+                uint8_t cbor_buf[CBOR_BUF_SIZE];
+                if (encode_data(cbor_buf, CBOR_BUF_SIZE, sensor_data, NUM_SENSORS, event_counter, seq_num) == 0)
                 {
-                    // for (size_t i = 0; i < CBOR_BUF_SIZE; i++)
-                    // {
-                    //     printf("%02X", cbor_buf[i]);
-                    // }
-                    // printf("\n");
-                    for (size_t i = 0; i < NUM_SENSORS; i++)
+                    send_data(cbor_buf, CBOR_BUF_SIZE);
+                    seq_num++;
+
+                    if (ENABLE_DEBUG)
                     {
-                        printf("%d, ", sensor_data[i]);
+                        // for (size_t i = 0; i < CBOR_BUF_SIZE; i++)
+                        // {
+                        //     printf("%02X", cbor_buf[i]);
+                        // }
+                        // printf("\n");
+                        for (size_t i = 0; i < NUM_SENSORS; i++)
+                        {
+                            printf("%d, ", sensor_data[i]);
+                        }
+                        printf("\n");
                     }
-                    printf("\n");
                 }
             }
         }
+        ztimer_sleep(ZTIMER_SEC,1);
     }
 
     return 0;
