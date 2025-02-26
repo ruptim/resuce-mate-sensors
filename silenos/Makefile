@@ -15,6 +15,9 @@ DEVELHELP ?= 1
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 1
 
+USEMODULE += shell
+USEMODULE += shell_cmds_default
+
 USEMODULE += dwax509m183x0
 USEMODULE += reed_sensor_driver
 USEMODULE += ztimer_sec
