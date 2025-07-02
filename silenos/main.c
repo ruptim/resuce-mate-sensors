@@ -37,6 +37,8 @@
 
 /* Application headers */
 
+#include "sensors.h"
+#include "messages.h"
 #include "lora_networking.h"
 
 /* Configure run parameters */
@@ -61,124 +63,11 @@ gpio_t no_pin = GPIO_PIN(1, 9); // D13
 #define ALARM_TIMER_INTERVAL_S 1
 ztimer_t alarm_timer;
 
-// - sensor data
-#define CBOR_BUF_SIZE 40
-#define AGGREGATE_DATA 1
+
 
 /* ------------------------ */
 
-typedef struct
-{
-    kernel_pid_t pid; // thread that receives the msg
-    msg_t msg;        // preallocated scratchspace for msg;
-} alarm_cb_args_t;
 
-void dwax_alarm_cb(void *arg)
-{
-    alarm_cb_args_t *cb_args = (alarm_cb_args_t *)arg;
-
-    msg_send_int(&cb_args->msg, cb_args->pid);
-}
-
-/**
- * @brief Callback function the normally-closed pin of the reed switch triggering the readout of the NC pin.
- *
- * @param args the void* of the alarm_cb_args_t struct.
- */
-void reed_nc_callback(void *args)
-{
-    (void)args;
-    alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
-
-    msg_send_int(&msg_args->msg, msg_args->pid);
-}
-
-/**
- * @brief Callback function the normally-open pin of the reed switch triggering the readout of the NO pin.
- *
- * @param args the void* of the alarm_cb_args_t struct.
- */
-void reed_no_callback(void *args)
-{
-    (void)args;
-    alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
-
-    msg_send_int(&msg_args->msg, msg_args->pid);
-}
-
-/**
- * @brief Callback function for the normally-closed pin of the reed switch, which also triggers the readout of the
- *        dwax... sensor.
- *
- * @param args the complete alarm_cb_args_t array with the dwax config at [0] and the nc config at [1].
- */
-void reed_nc_callback_and_dwax_trigger(void *args)
-{
-    (void)args;
-    alarm_cb_args_t *msg_args = (alarm_cb_args_t *)args;
-
-    msg_send_int(&msg_args[1].msg, msg_args[1].pid);
-    msg_send_int(&msg_args[0].msg, msg_args[0].pid);
-}
-
-/**
- * @brief Encodes the given sensor data array in cbor.
- *
- * @param buf           cbor buffer for the encoded data
- * @param buf_size      len of the cbor buffer
- * @param data          sensor data array
- * @param data_len      len of the sensor data array
- * @param event_counter current number of occurred events
- * @param seq_num       current sequence number
- * @return              -1 when failing to encode the data.
- */
-int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int event_counter, int seq_num)
-{
-    int ret = 0;
-
-    CborEncoder encoder, arrayEncoder, mapEncoder;
-    /* init and create map */
-    cbor_encoder_init(&encoder, buf, buf_size, 0);
-    ret |= cbor_encoder_create_map(&encoder, &mapEncoder, 3);
-
-    /* create key 'd' data array */
-    ret |= cbor_encode_text_stringz(&mapEncoder, "d");
-    ret |= cbor_encoder_create_array(&mapEncoder, &arrayEncoder, data_len);
-    for (int i = 0; i < data_len; ++i)
-    {
-        ret |= cbor_encode_int(&arrayEncoder, data[i]);
-    }
-    ret |= cbor_encoder_close_container(&mapEncoder, &arrayEncoder);
-
-    /* create key 'c' for event counter */
-    ret |= cbor_encode_text_stringz(&mapEncoder, "c");
-    ret |= cbor_encode_int(&mapEncoder, event_counter);
-    /* create key 's' sequence number */
-    ret |= cbor_encode_text_stringz(&mapEncoder, "s");
-    ret |= cbor_encode_int(&mapEncoder, seq_num);
-
-    ret |= cbor_encoder_close_container(&encoder, &mapEncoder);
-
-    if (ret != 0)
-    {
-        printf("Failed to encode data: %s \n", cbor_error_string(ret));
-        return -1;
-    }
-    return 0;
-}
-
-/**
- * @brief Send the data via the implemented network stack.
- *
- * @param cbor_buf the cbor encoded data to send
- * @param buf_size size of the cbor buffer
- */
-void send_data(uint8_t *cbor_buf, size_t buf_size)
-{
-    (void)cbor_buf;
-    (void)buf_size;
-    // lora_send_data(cbor_buf, buf_size);
-}
 
 /* Sensor config */
 
@@ -274,6 +163,7 @@ int main(void)
                 event_counter++;
                 break;
             case SENSOR_REED_SWITCH_NO:
+                (void)sensor_id; // not needed, but prevents the compiler from complaining about having declaration right after the "case label".
                 reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
                 reed_sensor_val_t no_val;
                 reed_sensor_driver_read_no(reed_no, &no_val);
