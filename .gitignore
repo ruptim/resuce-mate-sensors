@@ -54,3 +54,6 @@ bin/
 .cache
 
 .vscode/
+
+
+hardware/
