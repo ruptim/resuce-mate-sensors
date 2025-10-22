@@ -1,6 +1,7 @@
 # name of the application
 APPLICATION = Silenos
-
+APPDIR                          ?= $(CURDIR)/src
+BINDIRBASE                      ?= $(CURDIR)/bin
 # If no BOARD is found in the environment, use this default:
 BOARD ?= feather-nrf52840-sense
 
