@@ -114,10 +114,20 @@ def main():
     cw.add_line(
         comment="IDs for all contacts per sensor to use with parameters and identification in messages."
     )
+    cw.add_line(ignore_indent=True)
 
 
+
+    # init code defintion
     init_code_lines = []
-    init_code_lines.append("int ret = 0;\n")
+    init_code_writer = CodeWriter()
+    init_code_writer.include("sensor_config.h")
+    init_code_writer.add_line(ignore_indent=True)
+    init_code_writer.add_line("int init_sensors(void)")
+    init_code_writer.open_brace()
+
+    init_code_writer.add_lines("int ret = 0;\n")
+
 
     id_counter = 0
     for i, s in enumerate(data["sensors"]):
@@ -137,7 +147,7 @@ def main():
 
         ## create sensor contact defines and callback arguments
 
-        init_code_lines.append(
+        init_code_writer.add_line(
             f"/* {'-' * 20} init code for sensor '{s_name}' {'-' * 20} */"
         )
 
@@ -145,7 +155,7 @@ def main():
             s_id_nc = f"{s_name.upper()}_NC_ID"
             cw.add_define(s_id_nc, id_counter)
 
-            init_code_lines.extend(
+            init_code_writer.add_lines(
                 [
                     f"alarm_cb_args[{s_id_nc}].pid = thread_getpid();",
                     f"alarm_cb_args[{s_id_nc}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NC.value},{id_counter});",
@@ -161,7 +171,7 @@ def main():
 
             cw.add_define(s_id_no, id_counter)
 
-            init_code_lines.extend(
+            init_code_writer.add_lines(
                 [
                     f"alarm_cb_args[{s_id_no}].pid = thread_getpid();",
                     f"alarm_cb_args[{s_id_no}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NO.value},{id_counter});",
@@ -173,7 +183,7 @@ def main():
             id_counter += 1
 
             ## driver init
-            init_code_lines.extend(
+            init_code_writer.add_lines(
                 [
                     "/* first cast to specific param type and then to base params type for the array. */",
                     f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
@@ -198,7 +208,7 @@ def main():
         elif int(s["type"]) == 2:
             s_id = f"{s_name.upper()}_ID"
             cw.add_define(s_id, id_counter)
-            init_code_lines.extend(
+            init_code_writer.add_lines(
                 [
                     f"alarm_cb_args[{s_id}].pid = thread_getpid();"
                     f"alarm_cb_args[{s_id}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.DWAX.value},{id_counter});"
@@ -210,8 +220,14 @@ def main():
 
         cw.add_line(ignore_indent=True)
 
-    cw.add_line(ignore_indent=True)
 
+    ## close init function
+    init_code_writer.add_lines(init_code_lines + ["return 0;"])
+    init_code_writer.close_brace()
+
+
+
+    ## create sensor handle and sensor params array
     registered_sensors = Variable(
         "registered_sensors", primitive="sensor_base_type_t", array=num_sensors
     )
@@ -234,11 +250,11 @@ def main():
         ])
     )
 
-    cw.add_line("int init_sensors(void)")
-    cw.open_brace()
-    cw.add_lines(init_code_lines + ["return 0;"])
-    cw.close_brace()
+    cw.add_line("int init_sensors(void);")
 
+
+
+  
 
 
     # ---------------------- header footer ---------------------------
@@ -252,15 +268,26 @@ def main():
     cw.add_line("#endif // SENSOR_CONFIG_H_")
 
 
-    # ---------------------- export code -----------------------------
+    # ---------------------- export header -----------------------------
 
-    file_path = pathlib.Path(args.out_dir).joinpath("sensor_config.h")
-    print(f"Writing code to file: {file_path}")
-    with open(file_path, "w") as f:
+    header_file_path = pathlib.Path(args.out_dir).joinpath("sensor_config.h")
+    print(f"Writing header code to file: {header_file_path}")
+    with open(header_file_path, "w") as f:
         f.writelines(cw.code)
 
     if args.format_file:
-        os.system(f"clang-format -i {file_path}")
+        os.system(f"clang-format -i {header_file_path}")
+
+
+    # ---------------------- export source -----------------------------
+
+    source_file_path = pathlib.Path(args.out_dir).joinpath("sensor_config.c")
+    print(f"Writing source code to file: {source_file_path}")
+    with open(source_file_path, "w") as f:
+        f.writelines(init_code_writer.code)
+
+    if args.format_file:
+        os.system(f"clang-format -i {source_file_path}")
 
 
 if __name__ == "__main__":

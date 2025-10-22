@@ -4,6 +4,36 @@
 #include "msg.h"
 #include "thread.h"
 
+#include "dwax509m183x0.h"
+#include "reed_sensor_driver.h"
+
+#define SENSOR_TYPE_ID_DWAX509M183X0 1
+#define SENSOR_TYPE_ID_REED_SWITCH_NC 2
+#define SENSOR_TYPE_ID_REED_SWITCH_NO 3
+
+#define REED_SENSOR_DEBOUNCE_MS 60
+
+/*
+* Macro to encode sensor type and global sensor id in a 16-Bit integer.
+* -----------------------------------------------------------
+* |   Sensor Type (8 bits)     |   Sensor Number (8 bits)   |
+* |----------------------------|----------------------------|
+* |  7  6  5  4  3  2  1  0    |  7  6  5  4  3  2  1  0    |
+* |---------------------------------------------------------|
+*/
+#define ENCODE_SENSOR_TYPE_ID(type, id) ((type) << 8 | (id))
+
+typedef union {
+	reed_sensor_driver_t reed_sensor;
+	dwax509m183x0_t inductive_sensor;
+} sensor_base_type_t;
+
+typedef union {
+	reed_sensor_driver_params_t reed_sensor_params;
+	dwax509m183x0_params_t inductive_sensor_params;
+} sensor_base_params_t;
+
+
 typedef struct
 {
     kernel_pid_t pid; // thread that receives the msg
