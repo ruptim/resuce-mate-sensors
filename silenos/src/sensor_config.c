@@ -1,5 +1,8 @@
 #include "sensor_config.h"
 
+sensor_base_type_t registered_sensors[2];
+sensor_base_params_t registered_sensors_params[2];
+
 int init_sensors(void)
 {
     int ret = 0;

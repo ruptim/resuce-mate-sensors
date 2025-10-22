@@ -39,8 +39,9 @@ static alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 #define SENSOR_2_REED_NC_ID 2
 #define SENSOR_2_REED_NO_ID 3
 
-sensor_base_type_t registered_sensors[2];
-sensor_base_params_t registered_sensors_params[2];
+extern sensor_base_type_t registered_sensors[2];
+extern sensor_base_params_t registered_sensors_params[2];
+
 
 /**
 * @brief  Intiatialize all configured sensors with their corresponding drivers and parameters.

@@ -41,7 +41,7 @@ def format_comment_block(lines):
 
     for line in lines:
         out.append("* " + line)
-    
+
     out.append("*/")
     return out
 
@@ -60,17 +60,19 @@ def main():
     cw.add_line(ignore_indent=True)
 
     # cw.start_comment()
-    cw.add_lines(format_comment_block(
-        [
-            "@ingroup     silenos",
-            "@{",
-            "\n",
-            "@file",
-            "@brief generated sensor config header.",
-            "\n",
-            "@author      Timon Rupelt <me@ruptim.dev>",
-            "@}",
-        ])
+    cw.add_lines(
+        format_comment_block(
+            [
+                "@ingroup     silenos",
+                "@{",
+                "\n",
+                "@file",
+                "@brief generated sensor config header.",
+                "\n",
+                "@author      Timon Rupelt <me@ruptim.dev>",
+                "@}",
+            ]
+        )
     )
     # cw.end_comment()
     cw.add_line(ignore_indent=True)
@@ -79,26 +81,24 @@ def main():
     cw.include("sensors.h")
     cw.add_line(ignore_indent=True)
 
-    cw.add_lines([
-        '#ifdef __cplusplus',
-        'extern C {',
-        '#endif',
-    ])
+    cw.add_lines(
+        [
+            "#ifdef __cplusplus",
+            "extern C {",
+            "#endif",
+        ]
+    )
     cw.add_line(ignore_indent=True)
 
-    ## ---------------------- start of config code ---------------------------- 
-
+    ## ---------------------- start of config code ----------------------------
 
     # cw.add_line(comment='-' * 30 + 'Sensor Declaration' + '-' * 30)
 
     num_sensors = len(data["sensors"])
-    cw.add_line(
-        comment="Number of physical sensors connected."
-    )
+    cw.add_line(comment="Number of physical sensors connected.")
     cw.add_define("NUM_SENSORS", num_sensors)
     cw.add_line(ignore_indent=True)
 
-    
     cw.add_line(
         comment="Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors)"
     )
@@ -111,23 +111,36 @@ def main():
     cw.add_line("static alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];")
     cw.add_line(ignore_indent=True)
 
+    ## create variables for sensor handle and sensor params array
+    registered_sensors = Variable(
+        "registered_sensors", primitive="sensor_base_type_t", array=num_sensors
+    )
+
+    registered_sensors_params = Variable(
+        "registered_sensors_params", primitive="sensor_base_params_t", array=num_sensors
+    )
+
     cw.add_line(
         comment="IDs for all contacts per sensor to use with parameters and identification in messages."
     )
     cw.add_line(ignore_indent=True)
 
-
-
     # init code defintion
     init_code_lines = []
     init_code_writer = CodeWriter()
+
     init_code_writer.include("sensor_config.h")
     init_code_writer.add_line(ignore_indent=True)
+
+    ## 'define' arrays in source file
+    init_code_writer.add_variable_declaration(registered_sensors)
+    init_code_writer.add_variable_declaration(registered_sensors_params)
+    init_code_writer.add_line(ignore_indent=True)
+
     init_code_writer.add_line("int init_sensors(void)")
     init_code_writer.open_brace()
 
     init_code_writer.add_lines("int ret = 0;\n")
-
 
     id_counter = 0
     for i, s in enumerate(data["sensors"]):
@@ -141,7 +154,6 @@ def main():
 
         else:
             TypeError(f"Type {s['type']} not supported!")
-
 
         s_name = f"sensor_{i + 1}_{name_base}"
 
@@ -220,53 +232,41 @@ def main():
 
         cw.add_line(ignore_indent=True)
 
-
     ## close init function
     init_code_writer.add_lines(init_code_lines + ["return 0;"])
     init_code_writer.close_brace()
 
+    ## add extern declaration for  sensor handle and sensor params array
+    cw.add_variable_declaration(registered_sensors, extern=True)
+    cw.add_variable_declaration(registered_sensors_params, extern=True)
+    cw.add_line(ignore_indent=True)
 
-
-    ## create sensor handle and sensor params array
-    registered_sensors = Variable(
-        "registered_sensors", primitive="sensor_base_type_t", array=num_sensors
-    )
-
-    registered_sensors_params = Variable(
-        "registered_sensors_params", primitive="sensor_base_params_t", array=num_sensors
-    )
-
-    cw.add_variable_declaration(registered_sensors)
-    cw.add_variable_declaration(registered_sensors_params)
-    
     # init function
 
     cw.add_line(ignore_indent=True)
-    cw.add_lines(format_comment_block(
-        [
-            "@brief  Intiatialize all configured sensors with their corresponding drivers and parameters.",
-            "\n",
-            "@return 0 if all drivers where intialized correctly, -1 otherwise.",
-        ])
+    cw.add_lines(
+        format_comment_block(
+            [
+                "@brief  Intiatialize all configured sensors with their corresponding drivers and parameters.",
+                "\n",
+                "@return 0 if all drivers where intialized correctly, -1 otherwise.",
+            ]
+        )
     )
 
     cw.add_line("int init_sensors(void);")
 
-
-
-  
-
-
     # ---------------------- header footer ---------------------------
-    
-    cw.add_lines([
-        '#ifdef __cplusplus',
-        '}',
-        '#endif',
-    ])
+
+    cw.add_lines(
+        [
+            "#ifdef __cplusplus",
+            "}",
+            "#endif",
+        ]
+    )
     cw.add_line(ignore_indent=True)
     cw.add_line("#endif // SENSOR_CONFIG_H_")
-
 
     # ---------------------- export header -----------------------------
 
@@ -277,7 +277,6 @@ def main():
 
     if args.format_file:
         os.system(f"clang-format -i {header_file_path}")
-
 
     # ---------------------- export source -----------------------------
 
