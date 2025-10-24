@@ -2,6 +2,11 @@
 
 The Silenos application is being developed as part of the [RESCUE-MATE](https://www.rescue-mate.de/) research project to monitor floodgates.
 
+## Dependencies
+- [RIOT](https://github.com/RIOT-OS/RIOT) (at ../RIOT)
+- Python Dependencies for code generation (requirements.txt)
+  - csnake
+
 ## Usage
 
 ### Sensor Config Code Generation
