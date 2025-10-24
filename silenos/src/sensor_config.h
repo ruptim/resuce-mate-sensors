@@ -29,7 +29,8 @@ extern C {
 /* Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors) */
 #define NUM_UNIQUE_SENSOR_VALUES 6
 
-static alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
+/* exists only to keep all callback arguments and wont be used directly. */
+static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 
 /* IDs for all contacts per sensor to use with parameters and identification in messages. */
 
@@ -52,6 +53,8 @@ extern sensor_base_params_t registered_sensors_params[3];
 * @return 0 if all drivers where intialized correctly, -1 otherwise.
 */
 int init_sensors(void);
+
+
 #ifdef __cplusplus
 }
 #endif

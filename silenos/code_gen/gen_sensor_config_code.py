@@ -108,7 +108,8 @@ def main():
     cw.add_define("NUM_UNIQUE_SENSOR_VALUES", num_unique_sensor_values)
 
     cw.add_line(ignore_indent=True)
-    cw.add_line("static alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];")
+    cw.add_line(comment="exists only to keep all callback arguments and wont be used directly.")
+    cw.add_line("static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];")
     cw.add_line(ignore_indent=True)
 
     ## create variables for sensor handle and sensor params array
@@ -129,6 +130,7 @@ def main():
     init_code_lines = []
     init_code_writer = CodeWriter()
 
+    init_code_writer.include("string.h")
     init_code_writer.include("sensor_config.h")
     init_code_writer.add_line(ignore_indent=True)
 
@@ -140,6 +142,8 @@ def main():
     init_code_writer.add_line("int init_sensors(void)")
     init_code_writer.open_brace()
 
+    init_code_writer.add_lines("memset(alarm_cb_args, 0, sizeof(alarm_cb_args));\n")
+    init_code_writer.add_line(ignore_indent=True)
     init_code_writer.add_lines("int ret = 0;\n")
 
     id_counter: int = 0
@@ -255,6 +259,8 @@ def main():
     )
 
     cw.add_line("int init_sensors(void);")
+    cw.add_line(ignore_indent=True)
+    cw.add_line(ignore_indent=True)
 
     # ---------------------- header footer ---------------------------
 

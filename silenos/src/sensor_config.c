@@ -1,3 +1,4 @@
+#include "string.h"
 #include "sensor_config.h"
 
 sensor_base_type_t registered_sensors[3];
@@ -5,6 +6,8 @@ sensor_base_params_t registered_sensors_params[3];
 
 int init_sensors(void)
 {
+    memset(alarm_cb_args, 0, sizeof(alarm_cb_args));
+
     int ret = 0;
     /* -------------------- init code for sensor 'sensor_1_reed' -------------------- */
     alarm_cb_args[SENSOR_1_REED_NC_ID].pid = thread_getpid();
