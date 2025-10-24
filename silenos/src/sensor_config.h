@@ -24,10 +24,10 @@ extern C {
 #endif
 
 /* Number of physical sensors connected. */
-#define NUM_SENSORS 2
+#define NUM_SENSORS 3
 
 /* Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors) */
-#define NUM_UNIQUE_SENSOR_VALUES 4
+#define NUM_UNIQUE_SENSOR_VALUES 6
 
 static alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 
@@ -39,8 +39,11 @@ static alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 #define SENSOR_2_REED_NC_ID 2
 #define SENSOR_2_REED_NO_ID 3
 
-extern sensor_base_type_t registered_sensors[2];
-extern sensor_base_params_t registered_sensors_params[2];
+#define SENSOR_3_REED_NC_ID 4
+#define SENSOR_3_REED_NO_ID 5
+
+extern sensor_base_type_t registered_sensors[3];
+extern sensor_base_params_t registered_sensors_params[3];
 
 
 /**
