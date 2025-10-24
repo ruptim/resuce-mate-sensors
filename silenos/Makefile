@@ -5,6 +5,8 @@ BINDIRBASE                      ?= $(CURDIR)/bin
 # If no BOARD is found in the environment, use this default:
 BOARD ?= feather-nrf52840-sense
 
+SENSOR_CONFIG = default_sensor_config
+
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= ../RIOT
 
@@ -32,5 +34,8 @@ FEATURES_REQUIRED += periph_adc
 USEPKG += tinycbor
 USEPKG += semtech-loramac
 
+
+GEN_OUTPUT := $(shell python code_gen/gen_sensor_config_code.py -c sensor_configs/$(SENSOR_CONFIG).json)
+$(info    $(GEN_OUTPUT))
 
 include $(RIOTBASE)/Makefile.include

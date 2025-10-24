@@ -142,7 +142,7 @@ def main():
 
     init_code_writer.add_lines("int ret = 0;\n")
 
-    id_counter = 0
+    id_counter: int = 0
     for i, s in enumerate(data["sensors"]):
         name_base = ""
 
@@ -270,8 +270,8 @@ def main():
 
     # ---------------------- export header -----------------------------
 
+    print(f"[CODE GEN] Writing writing files to dir: {args.out_dir}")
     header_file_path = pathlib.Path(args.out_dir).joinpath("sensor_config.h")
-    print(f"Writing header code to file: {header_file_path}")
     with open(header_file_path, "w") as f:
         f.writelines(cw.code)
 
@@ -281,7 +281,6 @@ def main():
     # ---------------------- export source -----------------------------
 
     source_file_path = pathlib.Path(args.out_dir).joinpath("sensor_config.c")
-    print(f"Writing source code to file: {source_file_path}")
     with open(source_file_path, "w") as f:
         f.writelines(init_code_writer.code)
 

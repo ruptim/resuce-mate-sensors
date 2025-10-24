@@ -1,0 +1,22 @@
+{
+  "sensors": [
+    {
+      "name": "polder11/gate13/01",
+      "type": "1",
+      "port_pin1": [1, 9],
+      "port_pin2": [0, 8]
+    },
+    {
+      "name": "polder11/gate13/02",
+      "type": "1",
+      "port_pin1": [0, 6],
+      "port_pin2": [0, 27]
+    },
+    {
+      "name": "polder11/gate13/03",
+      "type": "1",
+      "port_pin1": [0, 26],
+      "port_pin2": [0, 7]
+    }
+  ]
+}
