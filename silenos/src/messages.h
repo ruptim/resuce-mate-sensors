@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cbor.h"
+#include <stddef.h>
 #include <stdint.h>
 
 // - sensor data

@@ -1,7 +1,10 @@
 #include "data_eval.h"
 #include "sensor_config.h"
 
+#include "ztimer.h"
+
 #include <stdio.h>
+
 
 /* -------------- type definitions ------------------ */
 
@@ -16,15 +19,15 @@ typedef struct {
 #define RCV_QUEUE_SIZE 4
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
 
-char eval_thread_stack[THREAD_STACKSIZE_MAIN];
+static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */
 #define TEMPORAL_CONFIRM_TIMER_INTERVAL_MS 1000
-ztimer_t temporal_confirm_timer;
+static ztimer_t temporal_confirm_timer;
 
 static long long sensor_event_counter = 0;
 
-sensor_state_t sensor_states[NUM_UNIQUE_SENSOR_VALUES] = { 0 };
+static sensor_state_t sensor_states[NUM_UNIQUE_SENSOR_VALUES] = { 0 };
 
 /* ------------ Prototype declarations ---------------- */
 
@@ -60,7 +63,7 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
     sensor_event_counter++;
 
     ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
-    printf("Sensor %d: %d, %ld\n", sensor_id, value, time);
+    printf("Sensor %d: %d, %u\n", sensor_id, value, time);
 }
 
 void await_sensor_events(void)

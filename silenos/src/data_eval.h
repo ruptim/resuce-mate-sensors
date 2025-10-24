@@ -1,8 +1,5 @@
 #pragma once
 
-#include "ztimer.h"
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern C {
 #endif

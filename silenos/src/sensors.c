@@ -1,5 +1,4 @@
 #include "sensors.h"
-#include <stdio.h>
 
 void dwax_alarm_cb(void *arg)
 {

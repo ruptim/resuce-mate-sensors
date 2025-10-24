@@ -1,8 +1,6 @@
 #pragma once
 
 #include "msg.h"
-#include "periph_cpu_common.h"
-#include "thread.h"
 
 #include "dwax509m183x0.h"
 #include "reed_sensor_driver.h"
