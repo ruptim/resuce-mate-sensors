@@ -1,7 +1,7 @@
-#ifndef SENSORS_H_
-#define SENSORS_H_
+#pragma once
 
 #include "msg.h"
+#include "periph_cpu_common.h"
 #include "thread.h"
 
 #include "dwax509m183x0.h"
@@ -12,6 +12,10 @@
 #define SENSOR_TYPE_ID_REED_SWITCH_NO 3
 
 #define REED_SENSOR_DEBOUNCE_MS 60
+#define REED_SENSOR_PIN_STATE_OPEN 0 
+#define REED_SENSOR_PIN_STATE_CLOSED 1
+#define REED_SENSOR_NOT_ACTIVATED 0 
+#define REED_SENSOR_ACTIVATED 1 
 
 /*
 * Macro to encode sensor type and global sensor id in a 16-Bit integer.
@@ -40,6 +44,8 @@ typedef struct
     msg_t msg;        // preallocated scratchspace for msg;
 } alarm_cb_args_t;
 
+
+
 void dwax_alarm_cb(void *arg);
 
 /**
@@ -65,4 +71,3 @@ void reed_no_callback(void *args);
 void reed_nc_callback_and_dwax_trigger(void *args);
 
 
-#endif // SENSORS_H_

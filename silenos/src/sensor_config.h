@@ -14,8 +14,7 @@
 * @}
 */
 
-#ifndef SENSOR_CONFIG_H_
-#define SENSOR_CONFIG_H_
+#pragma once
 
 #include "sensors.h"
 
@@ -58,5 +57,3 @@ int init_sensors(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // SENSOR_CONFIG_H_

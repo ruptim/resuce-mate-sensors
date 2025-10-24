@@ -1,5 +1,4 @@
-#ifndef MESSAGES_H_
-#define MESSAGES_H_
+#pragma once
 
 #include "cbor.h"
 #include <stdint.h>
@@ -29,4 +28,4 @@ int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int even
  */
 void send_data(uint8_t *cbor_buf, size_t buf_size);
 
-#endif // MESSAGES_H_
+

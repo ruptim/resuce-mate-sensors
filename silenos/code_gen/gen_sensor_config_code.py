@@ -77,7 +77,8 @@ def main():
     # cw.end_comment()
     cw.add_line(ignore_indent=True)
 
-    cw.add_lines(["#ifndef SENSOR_CONFIG_H_", "#define SENSOR_CONFIG_H_", "\n"])
+    # cw.add_lines(["#ifndef SENSOR_CONFIG_H_", "#define SENSOR_CONFIG_H_", "\n"])
+    cw.add_lines(["#pragma once", "\n"])
     cw.include("sensors.h")
     cw.add_line(ignore_indent=True)
 
@@ -272,7 +273,7 @@ def main():
         ]
     )
     cw.add_line(ignore_indent=True)
-    cw.add_line("#endif // SENSOR_CONFIG_H_")
+    # cw.add_line("#endif // SENSOR_CONFIG_H_")
 
     # ---------------------- export header -----------------------------
 
