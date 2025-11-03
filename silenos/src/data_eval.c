@@ -5,7 +5,6 @@
 
 #include <stdio.h>
 
-
 /* -------------- type definitions ------------------ */
 
 typedef struct {
@@ -16,13 +15,16 @@ typedef struct {
 } sensor_state_t;
 
 /* ------------ variable declarations ---------------- */
-#define RCV_QUEUE_SIZE 4
+
+#define GATE_CLOSED    1
+
+#define RCV_QUEUE_SIZE 8
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
 
 static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */
-#define TEMPORAL_CONFIRM_TIMER_INTERVAL_MS 1000
+#define TEMPORAL_CONFIRM_TIMER_INTERVAL_MS 2000
 static ztimer_t temporal_confirm_timer;
 
 static long long sensor_event_counter = 0;
@@ -41,15 +43,9 @@ static void *evaluate_gate_state(void *arg);
 void temporal_confirm_timer_callback(void *args)
 {
     (void)args;
-    printf("--Timer--\n");
-    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%d, ", sensor_states[i].value);
-    }
-    printf("\n");
 
-    thread_create(eval_thread_stack, sizeof(eval_thread_stack),
-                THREAD_PRIORITY_MAIN - 1, 0, evaluate_gate_state, NULL,
-                "gate_eval_thread");
+    thread_create(eval_thread_stack, sizeof(eval_thread_stack), THREAD_PRIORITY_MAIN - 1, 0,
+                  evaluate_gate_state, NULL, "gate_eval_thread");
 }
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
@@ -63,7 +59,8 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
     sensor_event_counter++;
 
     ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
-    printf("Sensor %d: %d, %u\n", sensor_id, value, time);
+    printf("Sensor %d (%s): %d, %lu\n", sensor_id,
+           sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
 }
 
 void await_sensor_events(void)
@@ -73,12 +70,13 @@ void await_sensor_events(void)
     // initialize timer callback
     temporal_confirm_timer.callback = temporal_confirm_timer_callback;
 
-    msg_t msg;
     while (true) {
+        msg_t msg;
         msg_receive(&msg);
 
         const uint8_t sensor_type = msg.type >> 8;
         const uint8_t sensor_id = msg.type & 0x00FF;
+
         switch (sensor_type) {
         case SENSOR_TYPE_ID_DWAX509M183X0:
             (void)sensor_id;
@@ -152,17 +150,27 @@ bool compare_sensor_pin_state(sensor_state_t sensor, uint8_t comp_state)
 
 void *evaluate_gate_state(void *arg)
 {
-    (void) arg;
+    (void)arg;
 
     int final_state = 0;
 
+    /* sensor check for configuration of multiple equivalent (sequential) reed sensors */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         if (compare_sensor_pin_state(sensor_states[i], REED_SENSOR_ACTIVATED)) {
             final_state |= 1;
         }
+        else {
+            final_state &= 0;
+        }
     }
 
-    printf("Gate State is: %s\n", final_state == 0 ? "closed" : "open");
+    printf("----\n");
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        printf("%d, ", sensor_states[i].value);
+    }
+    printf("\n");
+
+    printf("Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
 
     return NULL;
 }
