@@ -1,5 +1,7 @@
 #include "messages.h"
+#include "cbor.h"
 
+#include "stdio.h"
 
 int encode_data(uint8_t *buf, size_t buf_size, int *data, int data_len, int event_counter, int seq_num)
 {
