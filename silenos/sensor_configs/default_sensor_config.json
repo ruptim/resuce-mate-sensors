@@ -18,5 +18,7 @@
       "port_pin1": [0, 26],
       "port_pin2": [0, 7]
     }
-  ]
+    
+  ],
+  "sensor_config": "EQUAL_ORDERED"
 }

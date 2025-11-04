@@ -28,6 +28,9 @@ extern C {
 /* Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors) */
 #define NUM_UNIQUE_SENSOR_VALUES 6
 
+/* Configuration in which the sensors are to be interpreted. */
+#define ACTIVE_MULTI_SENSOR_MODE EQUAL_ORDERED
+
 /* exists only to keep all callback arguments and wont be used directly. */
 static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 

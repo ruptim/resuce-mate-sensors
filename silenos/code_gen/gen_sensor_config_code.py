@@ -36,6 +36,13 @@ class SensorTypeID(Enum):
     REED_NO = "SENSOR_TYPE_ID_REED_SWITCH_NO"
 
 
+class MultiSensorModeID(Enum):
+    EQUAL_PARALLEL = 0b00  # equal priority, order doesn't matter
+    EQUAL_ORDERED = 0b01  # equal priority, order matters
+    WEIGHTED_PARALLEL = 0b10  # different weights/priorities, order doesn't matter
+    WEIGHTED_ORDERED = 0b11  # different weights/priorities, order matters
+
+
 def format_comment_block(lines):
     out = ["/**"]
 
@@ -100,17 +107,26 @@ def main():
     cw.add_define("NUM_SENSORS", num_sensors)
     cw.add_line(ignore_indent=True)
 
-    cw.add_line(
-        comment="Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors)"
-    )
     num_unique_sensor_values = num_sensors + sum(
         [1 for s in data["sensors"] if int(s["type"]) == 1]
     )
+    cw.add_line(
+        comment="Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors)"
+    )
     cw.add_define("NUM_UNIQUE_SENSOR_VALUES", num_unique_sensor_values)
-
     cw.add_line(ignore_indent=True)
-    cw.add_line(comment="exists only to keep all callback arguments and wont be used directly.")
-    cw.add_line("static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];")
+
+    # get sensor mode
+    cw.add_line(comment="Configuration in which the sensors are to be interpreted.")
+    cw.add_line(f"#define ACTIVE_MULTI_SENSOR_MODE {MultiSensorModeID['EQUAL_ORDERED'].name}")
+    cw.add_line(ignore_indent=True)
+
+    cw.add_line(
+        comment="exists only to keep all callback arguments and wont be used directly."
+    )
+    cw.add_line(
+        "static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];"
+    )
     cw.add_line(ignore_indent=True)
 
     ## create variables for sensor handle and sensor params array

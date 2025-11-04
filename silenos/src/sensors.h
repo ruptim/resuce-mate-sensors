@@ -5,15 +5,22 @@
 #include "dwax509m183x0.h"
 #include "reed_sensor_driver.h"
 
-#define SENSOR_TYPE_ID_DWAX509M183X0    1
-#define SENSOR_TYPE_ID_REED_SWITCH_NC   2
-#define SENSOR_TYPE_ID_REED_SWITCH_NO   3
+#define SENSOR_TYPE_ID_DWAX509M183X0  1
+#define SENSOR_TYPE_ID_REED_SWITCH_NC 2
+#define SENSOR_TYPE_ID_REED_SWITCH_NO 3
 
-#define REED_SENSOR_DEBOUNCE_MS         60
-#define REED_SENSOR_PIN_STATE_OPEN      0
-#define REED_SENSOR_PIN_STATE_CLOSED    1
-#define REED_SENSOR_NOT_ACTIVATED       0
-#define REED_SENSOR_ACTIVATED           1
+#define REED_SENSOR_DEBOUNCE_MS       60
+#define REED_SENSOR_PIN_STATE_OPEN    0
+#define REED_SENSOR_PIN_STATE_CLOSED  1
+#define REED_SENSOR_NOT_ACTIVATED     0
+#define REED_SENSOR_ACTIVATED         1
+
+typedef enum {
+    EQUAL_PARALLEL = 0b00,    /* equal priority, order doesn't matter */
+    EQUAL_ORDERED = 0b01,     /* equal priority, order matters */
+    WEIGHTED_PARALLEL = 0b10, /* different weights/priorities, order doesn't matter */
+    WEIGHTED_ORDERED = 0b11,  /* different weights/priorities, order matters */
+} multi_sensor_mode_t;
 
 /*
 * Macro to encode sensor type and global sensor id in a 16-Bit integer.
