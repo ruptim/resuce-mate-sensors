@@ -1,22 +1,17 @@
 #include "data_eval.h"
 #include "sensor_config.h"
 
+#include "sensors.h"
+#include "state_validation.h"
 #include "ztimer.h"
 
 #include <stdio.h>
 
 /* -------------- type definitions ------------------ */
 
-typedef struct {
-    uint8_t type;
-    uint8_t sensor_id;
-    uint8_t value;
-    ztimer_now_t arrive_time;
-} sensor_state_t;
-
 /* ------------ variable declarations ---------------- */
 
-#define GATE_CLOSED    1
+
 
 #define RCV_QUEUE_SIZE 8
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
@@ -28,8 +23,6 @@ static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 static ztimer_t temporal_confirm_timer;
 
 static long long sensor_event_counter = 0;
-
-static sensor_state_t sensor_states[NUM_UNIQUE_SENSOR_VALUES] = { 0 };
 
 /* ------------ Prototype declarations ---------------- */
 
@@ -52,10 +45,10 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
 {
     ztimer_now_t time = ztimer_now(ZTIMER_USEC);
 
-    sensor_states[sensor_id].sensor_id = sensor_id;
-    sensor_states[sensor_id].type = sensor_type;
-    sensor_states[sensor_id].arrive_time = time;
-    sensor_states[sensor_id].value = value;
+    gate_state.sensor_states[sensor_id].sensor_id = sensor_id;
+    gate_state.sensor_states[sensor_id].type = sensor_type;
+    gate_state.sensor_states[sensor_id].arrive_time = time;
+    gate_state.sensor_states[sensor_id].value = value;
     sensor_event_counter++;
 
     ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
@@ -67,8 +60,13 @@ void await_sensor_events(void)
 {
     msg_init_queue(rcv_queue, RCV_QUEUE_SIZE);
 
-    // initialize timer callback
+    /* initialize timer callback */
     temporal_confirm_timer.callback = temporal_confirm_timer_callback;
+
+
+    /* initialize gate state by triggering all sensors once */
+    init_gate_state();
+   
 
     while (true) {
         msg_t msg;
@@ -148,29 +146,46 @@ bool compare_sensor_pin_state(sensor_state_t sensor, uint8_t comp_state)
     }
 }
 
+int eval_equal_ordered_mode(void)
+{
+    int state = 0;
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        if (compare_sensor_pin_state(gate_state.sensor_states[i], REED_SENSOR_ACTIVATED)) {
+            state |= 1;
+        }
+        else {
+            state &= 0;
+        }
+    }
+    return state;
+}
+
 void *evaluate_gate_state(void *arg)
 {
     (void)arg;
 
     int final_state = 0;
 
-    /* sensor check for configuration of multiple equivalent (sequential) reed sensors */
-    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        if (compare_sensor_pin_state(sensor_states[i], REED_SENSOR_ACTIVATED)) {
-            final_state |= 1;
-        }
-        else {
-            final_state &= 0;
-        }
+    /* sensor check for configuration of multiple equivalent (ordered) reed sensors */
+    switch (gate_state.sensor_mode)
+
+    {
+    case EQUAL_ORDERED:
+        final_state = eval_equal_ordered_mode();
+        break;
+    default:
+        break;
     }
 
     printf("----\n");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%d, ", sensor_states[i].value);
+        printf("%d, ", gate_state.sensor_states[i].value);
     }
     printf("\n");
 
     printf("Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
+
+    verify_gate_state(final_state);
 
     return NULL;
 }
