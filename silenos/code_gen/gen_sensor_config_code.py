@@ -122,14 +122,18 @@ def main():
     cw.add_line(ignore_indent=True)
 
     cw.add_line(
-        comment="exists only to keep all callback arguments and wont be used directly."
+        comment="holds all callback arguments for all sensors"
     )
     cw.add_line(
-        "static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];"
+        "extern alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];"
     )
     cw.add_line(ignore_indent=True)
 
     ## create variables for sensor handle and sensor params array
+    callback_args = Variable(
+        "alarm_cb_args", primitive="alarm_cb_args_t", array="NUM_UNIQUE_SENSOR_VALUES"
+    )
+
     registered_sensors = Variable(
         "registered_sensors", primitive="sensor_base_type_t", array=num_sensors
     )
@@ -152,6 +156,7 @@ def main():
     init_code_writer.add_line(ignore_indent=True)
 
     ## 'define' arrays in source file
+    init_code_writer.add_variable_declaration(callback_args)
     init_code_writer.add_variable_declaration(registered_sensors)
     init_code_writer.add_variable_declaration(registered_sensors_params)
     init_code_writer.add_line(ignore_indent=True)

@@ -1,6 +1,7 @@
 #include "string.h"
 #include "sensor_config.h"
 
+alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 sensor_base_type_t registered_sensors[3];
 sensor_base_params_t registered_sensors_params[3];
 

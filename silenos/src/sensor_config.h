@@ -31,8 +31,8 @@ extern C {
 /* Configuration in which the sensors are to be interpreted. */
 #define ACTIVE_MULTI_SENSOR_MODE EQUAL_ORDERED
 
-/* exists only to keep all callback arguments and wont be used directly. */
-static __attribute__((unused)) alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
+/* holds all callback arguments for all sensors */
+extern alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 
 /* IDs for all contacts per sensor to use with parameters and identification in messages. */
 
