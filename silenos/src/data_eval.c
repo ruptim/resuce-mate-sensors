@@ -25,7 +25,7 @@ static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */
 #define TEMPORAL_CONFIRM_TIMER_INTERVAL_MS 2000
-static ztimer_t temporal_confirm_timer;
+static ztimer_t temporal_confirm_timer  = {0};
 
 static long long sensor_event_counter = 0;
 
@@ -50,8 +50,10 @@ void temporal_confirm_timer_callback(void *args)
 }
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
-{
+{   
+    ztimer_acquire(ZTIMER_USEC);
     ztimer_now_t time = ztimer_now(ZTIMER_USEC);
+    ztimer_release(ZTIMER_USEC);
 
 
     mutex_lock(&gate_state_mutex);
@@ -70,7 +72,6 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
             // TODO mask sensor and report after timer expired
             gate_state.sensor_states[sensor_id].is_masked = true;
         }
-
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
         printf("Sensor %d (%s): %d, %lu\n", sensor_id,
