@@ -5,8 +5,11 @@
 
 gate_state_t gate_state;
 
+bool init_phase;
+
 void init_gate_state(void)
 {
+    init_phase = true;
     gate_state.sensor_mode = ACTIVE_MULTI_SENSOR_MODE;
     gate_state.state = GATE_OPEN;
 
@@ -22,6 +25,16 @@ void init_gate_state(void)
 
 void verify_gate_state(bool new_gate_state)
 {
+    /* in the init phase there is no current known gate state to check against  */
+    if (init_phase){
+        
+        init_phase = false;
+        gate_state.state = new_gate_state;
+        /* return for the time being */
+        return ;
+    }
+
     if (gate_state.state == new_gate_state) {
+
     }
 }
