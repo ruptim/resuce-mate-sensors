@@ -53,16 +53,21 @@
 
 int main(void)
 {
-    puts("RIOT application: 'Silenos'");
-    
+    puts("Application 'Silenos' starting.");
 
-    init_sensors();
+    if(init_sensors() != 0){
+        puts("Sensors failed to initialized!");
+        return -1;
+    }
+
+    if(init_lorawan_stack() != 0){
+        puts("LoRaWan failed to initialized!");
+        return -1;
+    }
 
     await_sensor_events();
 
-    // if(init_lora_stack() != 0){
-    //     exit(EXIT_FAILURE);
-    // }
+    
 
     return 0;
 }
