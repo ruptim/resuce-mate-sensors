@@ -3,6 +3,7 @@
 #include "sensor_config.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define GATE_OPEN   0
 #define GATE_CLOSED 1
@@ -11,7 +12,9 @@ typedef struct {
     uint8_t type;
     uint8_t sensor_id;
     uint8_t value;
-    ztimer_now_t arrive_time;
+    uint8_t event_counter;
+    ztimer_now_t latest_arrive_time;
+    bool is_masked;
 } sensor_state_t;
 
 typedef struct {

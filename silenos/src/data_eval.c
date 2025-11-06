@@ -1,13 +1,18 @@
 #include "data_eval.h"
+#include "mutex.h"
+#include "reporting.h"
 #include "sensor_config.h"
 
 #include "sensors.h"
 #include "state_validation.h"
-#include "ztimer.h"
 
+
+#include "ztimer.h"
 #include <stdio.h>
 
 /* -------------- type definitions ------------------ */
+
+#define MAX_EVENTS_FOR_SENSOR_FAULT 200
 
 /* ------------ variable declarations ---------------- */
 
@@ -23,6 +28,9 @@ static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 static ztimer_t temporal_confirm_timer;
 
 static long long sensor_event_counter = 0;
+
+
+static mutex_t gate_state_mutex = MUTEX_INIT;
 
 /* ------------ Prototype declarations ---------------- */
 
@@ -45,15 +53,33 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
 {
     ztimer_now_t time = ztimer_now(ZTIMER_USEC);
 
-    gate_state.sensor_states[sensor_id].sensor_id = sensor_id;
-    gate_state.sensor_states[sensor_id].type = sensor_type;
-    gate_state.sensor_states[sensor_id].arrive_time = time;
-    gate_state.sensor_states[sensor_id].value = value;
-    sensor_event_counter++;
 
-    ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
-    printf("Sensor %d (%s): %d, %lu\n", sensor_id,
+    mutex_lock(&gate_state_mutex);
+
+    if (!gate_state.sensor_states[sensor_id].is_masked){
+
+        gate_state.sensor_states[sensor_id].sensor_id = sensor_id;
+        gate_state.sensor_states[sensor_id].type = sensor_type;
+        gate_state.sensor_states[sensor_id].latest_arrive_time = time;
+        gate_state.sensor_states[sensor_id].value = value;
+        gate_state.sensor_states[sensor_id].event_counter += 1;
+        sensor_event_counter++;
+
+        if (gate_state.sensor_states[sensor_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
+            printf("Sensor %d reached maximum events. Possible fault or tampering.\n", sensor_id);
+            // TODO mask sensor and report after timer expired
+            gate_state.sensor_states[sensor_id].is_masked = true;
+        }
+
+        ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
+
+        printf("Sensor %d (%s): %d, %lu\n", sensor_id,
            sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
+    }
+
+    mutex_unlock(&gate_state_mutex);
+
+  
 }
 
 void await_sensor_events(void)
@@ -156,6 +182,7 @@ int eval_equal_ordered_mode(void)
         else {
             state &= 0;
         }
+        gate_state.sensor_states[i].event_counter = 0;
     }
     return state;
 }
@@ -163,6 +190,14 @@ int eval_equal_ordered_mode(void)
 void *evaluate_gate_state(void *arg)
 {
     (void)arg;
+
+    mutex_lock(&gate_state_mutex);
+
+    printf("----\n");
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        printf("%d (%d), ", gate_state.sensor_states[i].value,gate_state.sensor_states[i].event_counter);
+    }
+    printf("\n");
 
     int final_state = 0;
 
@@ -177,11 +212,8 @@ void *evaluate_gate_state(void *arg)
         break;
     }
 
-    printf("----\n");
-    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%d, ", gate_state.sensor_states[i].value);
-    }
-    printf("\n");
+    mutex_unlock(&gate_state_mutex);
+   
 
     printf("Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
 
