@@ -7,7 +7,6 @@ import json
 from argparse import ArgumentParser
 from csnake import CodeWriter, Variable, Function
 
-
 parser = ArgumentParser()
 
 parser.add_argument(
@@ -107,9 +106,12 @@ def main():
     cw.add_define("NUM_SENSORS", num_sensors)
     cw.add_line(ignore_indent=True)
 
-    num_unique_sensor_values = num_sensors + sum(
-        [1 for s in data["sensors"] if int(s["type"]) == 1]
-    )
+    num_unique_sensor_values = 0
+    for s in data['sensors']:
+        num_unique_sensor_values += 1 if s.get('port_pin1') else 0 
+        num_unique_sensor_values += 1 if s.get('port_pin2') else 0 
+
+    
     cw.add_line(
         comment="Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors)"
     )
@@ -166,10 +168,13 @@ def main():
 
     init_code_writer.add_lines("memset(alarm_cb_args, 0, sizeof(alarm_cb_args));\n")
     init_code_writer.add_line(ignore_indent=True)
-    init_code_writer.add_lines("int ret = 0;\n")
+    if num_sensors > 0:
+        init_code_writer.add_lines("int ret = 0;\n")
 
     id_counter: int = 0
     for i, s in enumerate(data["sensors"]):
+       
+
         name_base = ""
 
         if int(s["type"]) == 1:  # REED
@@ -190,50 +195,99 @@ def main():
         )
 
         if int(s["type"]) == 1:
-            s_id_nc = f"{s_name.upper()}_NC_ID"
-            cw.add_define(s_id_nc, id_counter)
+            nc_pin =  s.get('port_pin1')
+            no_pin = s.get('port_pin2')
 
-            init_code_writer.add_lines(
-                [
-                    f"alarm_cb_args[{s_id_nc}].pid = thread_getpid();",
-                    f"alarm_cb_args[{s_id_nc}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NC.value},{id_counter});",
-                    f"alarm_cb_args[{s_id_nc}].msg.content.ptr = (void *)&registered_sensors[{i}];\n",
-                    "\n",
-                ]
-            )
+            use_internal_pulldown = s.get("internal_pull_down",True)
+            def external_pulldown():
+                return "true" if not use_internal_pulldown else "false"
 
-            id_counter += 1
+            if nc_pin:
+                s_id_nc = f"{s_name.upper()}_NC_ID"
+                cw.add_define(s_id_nc, id_counter)
 
-            ## no
-            s_id_no = f"{s_name.upper()}_NO_ID"
+                init_code_writer.add_lines(
+                    [
+                        f"alarm_cb_args[{s_id_nc}].pid = thread_getpid();",
+                        f"alarm_cb_args[{s_id_nc}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NC.value},{id_counter});",
+                        f"alarm_cb_args[{s_id_nc}].msg.content.ptr = (void *)&registered_sensors[{i}];\n",
+                        "\n",
+                    ]
+                )
 
-            cw.add_define(s_id_no, id_counter)
+                id_counter += 1
 
-            init_code_writer.add_lines(
-                [
-                    f"alarm_cb_args[{s_id_no}].pid = thread_getpid();",
-                    f"alarm_cb_args[{s_id_no}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NO.value},{id_counter});",
-                    f"alarm_cb_args[{s_id_no}].msg.content.ptr = (void *)&registered_sensors[{i}];",
-                    "\n",
-                ]
-            )
+            if no_pin:
+                ## no
+                s_id_no = f"{s_name.upper()}_NO_ID"
 
-            id_counter += 1
+                cw.add_define(s_id_no, id_counter)
 
-            ## driver init
-            init_code_writer.add_lines(
+                init_code_writer.add_lines(
+                    [
+                        f"alarm_cb_args[{s_id_no}].pid = thread_getpid();",
+                        f"alarm_cb_args[{s_id_no}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NO.value},{id_counter});",
+                        f"alarm_cb_args[{s_id_no}].msg.content.ptr = (void *)&registered_sensors[{i}];",
+                        "\n",
+                    ]
+                )
+
+                id_counter += 1
+
+
+
+            if nc_pin and no_pin:
+                ## driver init
+                init_code_writer.add_lines(
+                    [
+                        "/* first cast to specific param type and then to base params type for the array. */",
+                        f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                        f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
+                        f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
+                        f"    .nc_int_flank = GPIO_BOTH,",
+                        f"    .no_int_flank = GPIO_BOTH,",
+                        f"    .nc_callback = reed_nc_callback,",
+                        f"    .no_callback = reed_no_callback,",
+                        f"    .nc_callback_args = (void *)&alarm_cb_args[{s_id_nc}],",
+                        f"    .no_callback_args = (void *)&alarm_cb_args[{s_id_no}],",
+                        f"    .use_external_pulldown = {external_pulldown()},",
+                        f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
+                        "\n",
+                        f"if ((ret = reed_sensor_driver_init(&registered_sensors[{i}].reed_sensor, &registered_sensors_params[{i}].reed_sensor_params)) != 0){{",
+                        "\treturn ret;",
+                        "}",
+                        "\n\n",
+                    ]
+                )
+            elif nc_pin:
+                 init_code_writer.add_lines(
+                    [
+                        "/* first cast to specific param type and then to base params type for the array. */",
+                        f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                        f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
+                        f"    .nc_int_flank = GPIO_BOTH,",
+                        f"    .nc_callback = reed_nc_callback,",
+                        f"    .nc_callback_args = (void *)&alarm_cb_args[{s_id_nc}],",
+                        f"    .use_external_pulldown = {external_pulldown()},",
+                        f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
+                        "\n",
+                        f"if ((ret = reed_sensor_driver_init(&registered_sensors[{i}].reed_sensor, &registered_sensors_params[{i}].reed_sensor_params)) != 0){{",
+                        "\treturn ret;",
+                        "}",
+                        "\n\n",
+                    ]
+                )
+            
+            else:
+                init_code_writer.add_lines(
                 [
                     "/* first cast to specific param type and then to base params type for the array. */",
                     f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
-                    f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
                     f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
-                    f"    .nc_int_flank = GPIO_BOTH,",
                     f"    .no_int_flank = GPIO_BOTH,",
-                    f"    .nc_callback = reed_nc_callback,",
                     f"    .no_callback = reed_no_callback,",
-                    f"    .nc_callback_args = (void *)&alarm_cb_args[{s_id_nc}],",
                     f"    .no_callback_args = (void *)&alarm_cb_args[{s_id_no}],",
-                    f"    .use_external_pulldown = false,",
+                    f"    .use_external_pulldown = {external_pulldown()},",
                     f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
                     "\n",
                     f"if ((ret = reed_sensor_driver_init(&registered_sensors[{i}].reed_sensor, &registered_sensors_params[{i}].reed_sensor_params)) != 0){{",
