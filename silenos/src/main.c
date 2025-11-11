@@ -19,6 +19,7 @@
  */
 
 #include "data_eval.h"
+#include "periph_cpu_common.h"
 #include <stdio.h>
 #include <sys/unistd.h>
 #include <time.h>
@@ -44,6 +45,7 @@
 
 /* Configure run parameters */
 
+
 // - debug output
 #define ENABLE_DEBUG 1
 #include "debug.h"
@@ -53,21 +55,30 @@
 
 int main(void)
 {
+    
+
+    ztimer_acquire(ZTIMER_SEC);
+    ztimer_sleep(ZTIMER_SEC, 4);
+    ztimer_release(ZTIMER_SEC);
+
     puts("Application 'Silenos' starting.");
 
     if(init_sensors() != 0){
         puts("Sensors failed to initialized!");
         return -1;
     }
+    
 
-    if(init_lorawan_stack() != 0){
-        puts("LoRaWan failed to initialized!");
-        return -1;
-    }
-
-    await_sensor_events();
 
     
+    // if(init_lorawan_stack() != 0){
+    //     puts("LoRaWan failed to initialized!");
+    //     return -1;
+    // }
+        
+    puts("Receiving Events!");
+    await_sensor_events();
+
 
     return 0;
 }
