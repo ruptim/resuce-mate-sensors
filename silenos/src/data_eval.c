@@ -1,6 +1,5 @@
 #include "data_eval.h"
 #include "mutex.h"
-#include "reporting.h"
 #include "sensor_config.h"
 
 #include "sensors.h"
