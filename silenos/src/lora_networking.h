@@ -1,3 +1,4 @@
+#pragma once
 
 #include <stdio.h>
 
@@ -21,4 +22,4 @@ int init_lorawan_stack(void);
  * @retval   0 on success
  * @retval  -1 on failure
  */
-int send_lorawan_packet(const netif_t *netif, uint8_t *cbor_buf, size_t buf_size);
+int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size);

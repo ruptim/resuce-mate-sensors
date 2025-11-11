@@ -9,6 +9,7 @@
 #include "net/netif.h"
 
 #include "net/gnrc/pktbuf.h"
+#include "net/gnrc/netreg.h"
 #include "net/gnrc/pkt.h"
 #include "net/gnrc/netif/hdr.h"
 
@@ -29,8 +30,6 @@ static char _rx_thread_stack[THREAD_STACKSIZE_DEFAULT];
 
 /* Message queue for reception thread] */
 static msg_t _rx_msg_queue[QUEUE_SIZE];
-
-static msg_t _tx_msg_queue[QUEUE_SIZE];
 
 /**
  * @brief   Find the LoRaWAN network interface in the registry.
@@ -171,16 +170,15 @@ int init_lorawan_stack(void){
 
 
 
-
                                     
     _join_lorawan_network(lorwan_netif);
 
     return 0;
 }
 
-int send_lorawan_packet(const netif_t *netif, uint8_t *cbor_buf, size_t buf_size)
+int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
 {
-    assert(netif != NULL);
+    assert(lorwan_netif != NULL);
     assert(cbor_buf != NULL);
 
     int result;
@@ -218,7 +216,7 @@ int send_lorawan_packet(const netif_t *netif, uint8_t *cbor_buf, size_t buf_size
     netif_header = (gnrc_netif_hdr_t *)header->data;
     netif_header->flags = 0x00;
 
-    result = gnrc_netif_send(container_of(netif, gnrc_netif_t, netif), packet);
+    result = gnrc_netif_send(container_of(lorwan_netif, gnrc_netif_t, netif), packet);
     if (result < 1) {
         printf("error: unable to send\n");
         gnrc_pktbuf_release(packet);
