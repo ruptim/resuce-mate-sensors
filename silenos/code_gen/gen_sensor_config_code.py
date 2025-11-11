@@ -101,6 +101,11 @@ def main():
 
     # cw.add_line(comment='-' * 30 + 'Sensor Declaration' + '-' * 30)
 
+    cw.add_line(comment="Location of the sensors defined in the config file..")
+    cw.add_define("SENSOR_CONFIG_LOCATION", data.get('location','none'))
+    cw.add_line(ignore_indent=True)
+
+
     num_sensors = len(data["sensors"])
     cw.add_line(comment="Number of physical sensors connected.")
     cw.add_define("NUM_SENSORS", num_sensors)
