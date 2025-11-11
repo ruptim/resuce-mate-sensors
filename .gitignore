@@ -55,6 +55,6 @@ bin/
 
 .vscode/
 .zed/
-
+.env
 
 hardware/
