@@ -48,8 +48,8 @@ int init_sensors(void)
     
     /* first cast to specific param type and then to base params type for the array. */
     registered_sensors_params[1] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
-        .nc_pin = GPIO_PIN(0,6),
-        .no_pin = GPIO_PIN(0,27),
+        .nc_pin = GPIO_PIN(0,11),
+        .no_pin = GPIO_PIN(0,12),
         .nc_int_flank = GPIO_BOTH,
         .no_int_flank = GPIO_BOTH,
         .nc_callback = reed_nc_callback,
@@ -69,21 +69,13 @@ int init_sensors(void)
     alarm_cb_args[SENSOR_3_REED_NC_ID].msg.type = ENCODE_SENSOR_TYPE_ID(SENSOR_TYPE_ID_REED_SWITCH_NC,4);
     alarm_cb_args[SENSOR_3_REED_NC_ID].msg.content.ptr = (void *)&registered_sensors[2];
     
-    alarm_cb_args[SENSOR_3_REED_NO_ID].pid = thread_getpid();
-    alarm_cb_args[SENSOR_3_REED_NO_ID].msg.type = ENCODE_SENSOR_TYPE_ID(SENSOR_TYPE_ID_REED_SWITCH_NO,5);
-    alarm_cb_args[SENSOR_3_REED_NO_ID].msg.content.ptr = (void *)&registered_sensors[2];
-    
     /* first cast to specific param type and then to base params type for the array. */
     registered_sensors_params[2] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
-        .nc_pin = GPIO_PIN(0,26),
-        .no_pin = GPIO_PIN(0,7),
+        .nc_pin = GPIO_PIN(1,2),
         .nc_int_flank = GPIO_BOTH,
-        .no_int_flank = GPIO_BOTH,
         .nc_callback = reed_nc_callback,
-        .no_callback = reed_no_callback,
         .nc_callback_args = (void *)&alarm_cb_args[SENSOR_3_REED_NC_ID],
-        .no_callback_args = (void *)&alarm_cb_args[SENSOR_3_REED_NO_ID],
-        .use_external_pulldown = false,
+        .use_external_pulldown = true,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
     
     if ((ret = reed_sensor_driver_init(&registered_sensors[2].reed_sensor, &registered_sensors_params[2].reed_sensor_params)) != 0){

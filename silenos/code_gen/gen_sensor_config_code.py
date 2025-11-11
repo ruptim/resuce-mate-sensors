@@ -6,6 +6,7 @@ from enum import Enum
 import json
 from argparse import ArgumentParser
 from csnake import CodeWriter, Variable, Function
+import numpy as np
 
 parser = ArgumentParser()
 
@@ -101,8 +102,21 @@ def main():
 
     # cw.add_line(comment='-' * 30 + 'Sensor Declaration' + '-' * 30)
 
-    cw.add_line(comment="Location of the sensors defined in the config file..")
+
+    # Location string 
+    cw.add_line(comment="Location of the sensors defined in the config file.")
     cw.add_define("SENSOR_CONFIG_LOCATION", data.get('location','none'))
+    cw.add_line(ignore_indent=True)
+    
+
+    # location - polder number
+    cw.add_line(comment="Polder number of the location.")
+    cw.add_define("SENSOR_CONFIG_LOCATION_POLDER", int( data['location'].split('/')[0].removeprefix('polder')) )
+    cw.add_line(ignore_indent=True)
+
+    # location - gate number
+    cw.add_line(comment="Gate number of the location.")
+    cw.add_define("SENSOR_CONFIG_LOCATION_GATE", int( data['location'].split('/')[1].removeprefix('gate')) )
     cw.add_line(ignore_indent=True)
 
 
@@ -177,6 +191,7 @@ def main():
         init_code_writer.add_lines("int ret = 0;\n")
 
     id_counter: int = 0
+    value_bytes_needed = 0
     for i, s in enumerate(data["sensors"]):
        
 
@@ -208,6 +223,8 @@ def main():
                 return "true" if not use_internal_pulldown else "false"
 
             if nc_pin:
+                value_bytes_needed += 1 # only 1 byte needed 
+
                 s_id_nc = f"{s_name.upper()}_NC_ID"
                 cw.add_define(s_id_nc, id_counter)
 
@@ -224,6 +241,9 @@ def main():
 
             if no_pin:
                 ## no
+
+                value_bytes_needed += 1 # only 1 byte needed 
+
                 s_id_no = f"{s_name.upper()}_NO_ID"
 
                 cw.add_define(s_id_no, id_counter)
@@ -303,6 +323,7 @@ def main():
             )
 
         elif int(s["type"]) == 2:
+            value_bytes_needed += int(np.iinfo(np.uint32).bits/4) # 4 bytes needed 
             s_id = f"{s_name.upper()}_ID"
             cw.add_define(s_id, id_counter)
             init_code_writer.add_lines(
@@ -320,6 +341,10 @@ def main():
     ## close init function
     init_code_writer.add_lines(init_code_lines + ["return 0;"])
     init_code_writer.close_brace()
+
+    cw.add_line(comment=" The number of maximum bytes needed for all sensor values.")
+    cw.add_define("SENSORS_MAX_VALUE_BYTES_NEEDED", value_bytes_needed)
+    cw.add_line(ignore_indent=True)
 
     ## add extern declaration for  sensor handle and sensor params array
     cw.add_variable_declaration(registered_sensors, extern=True)

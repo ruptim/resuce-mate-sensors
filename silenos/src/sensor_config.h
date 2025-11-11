@@ -22,11 +22,20 @@
 extern C {
 #endif
 
+/* Location of the sensors defined in the config file. */
+#define SENSOR_CONFIG_LOCATION "polder11/gate13/"
+
+/* Polder number of the location. */
+#define SENSOR_CONFIG_LOCATION_POLDER 11
+
+/* Gate number of the location. */
+#define SENSOR_CONFIG_LOCATION_GATE 13
+
 /* Number of physical sensors connected. */
 #define NUM_SENSORS 3
 
 /* Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors) */
-#define NUM_UNIQUE_SENSOR_VALUES 6
+#define NUM_UNIQUE_SENSOR_VALUES 5
 
 /* Configuration in which the sensors are to be interpreted. */
 #define ACTIVE_MULTI_SENSOR_MODE EQUAL_ORDERED
@@ -43,7 +52,9 @@ extern alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 #define SENSOR_2_REED_NO_ID 3
 
 #define SENSOR_3_REED_NC_ID 4
-#define SENSOR_3_REED_NO_ID 5
+
+/*  The number of maximum bytes needed for all sensor values. */
+#define SENSORS_MAX_VALUE_BYTES_NEEDED 5
 
 extern sensor_base_type_t registered_sensors[3];
 extern sensor_base_params_t registered_sensors_params[3];

@@ -22,15 +22,55 @@ typedef enum {
     WEIGHTED_ORDERED = 0b11,  /* different weights/priorities, order matters */
 } multi_sensor_mode_t;
 
+
+#define SENSOR_ENCODE_TYPE_BITS 4
+#define SENSOR_ENCODE_ID_BITS 4
+#define ENCODE_SENSOR_TYPE_ID_BITS (SENSOR_ENCODE_TYPE_BITS+SENSOR_ENCODE_ID_BITS)
+#define SENSOR_ENCODE_ID_AND_VAL ((SENSOR_ENCODE_ID_BITS*SENSOR_ENCODE_ID_BITS)-1)
+
 /*
-* Macro to encode sensor type and global sensor id in a 16-Bit integer.
+* Macro to encode sensor type and global sensor id in a integer whose size 
+* is defined by SENSOR_ENCODE_TYPE_BITS and SENSOR_ENCODE_ID_BITS.
+* This allows for up to SENSOR_ENCODE_ID_BITS^2  different sensor IDs and
+* SENSOR_ENCODE_TYPE_BITS different types.
+* Sizes can be adjusted to fit requirements
 * -----------------------------------------------------------
-* |   Sensor Type (8 bits)     |   Sensor Number (8 bits)   |
-* |----------------------------|----------------------------|
-* |  7  6  5  4  3  2  1  0    |  7  6  5  4  3  2  1  0    |
+* |   Sensor Type (X bits)     |   Sensor Number (X bits)   |
 * |---------------------------------------------------------|
 */
-#define ENCODE_SENSOR_TYPE_ID(type, id) ((type) << 8 | (id))
+#define ENCODE_SENSOR_TYPE_ID(type, id) ((type) << SENSOR_ENCODE_TYPE_BITS | (id))
+
+// Select uint type based on SENSOR_ENCODE_TYPE_BITS
+#if SENSOR_ENCODE_TYPE_BITS <= 8
+    typedef uint8_t sensor_type_t;
+#elif SENSOR_ENCODE_TYPE_BITS <= 16
+    typedef uint16_t sensor_type_t;
+#elif SENSOR_ENCODE_TYPE_BITS <= 32
+   typedef uint32_t sensor_type_t;
+#elif SENSOR_ENCODE_TYPE_BITS <= 64
+    #define SELECTED_UINT_TYPE uint64_t
+    typedef uint64_t sensor_type_t;
+#else
+    #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
+#endif
+
+// Select uint type based on SENSOR_ENCODE_ID_BITS
+#if SENSOR_ENCODE_ID_BITS <= 8
+    typedef uint8_t sensor_id_t;
+#elif SENSOR_ENCODE_ID_BITS <= 16
+    typedef uint16_t sensor_id_t;
+#elif SENSOR_ENCODE_ID_BITS <= 32
+   typedef uint32_t sensor_id_t;
+#elif SENSOR_ENCODE_ID_BITS <= 64
+    #define SELECTED_UINT_TYPE uint64_t
+    typedef uint64_t sensor_id_t;
+#else
+    #error "SENSOR_ENCODE_ID_BITS exceeds supported maximum."
+#endif
+
+
+#define DECODE_SENSOR_TYPE(type_id_value) (type_id_value >> SENSOR_ENCODE_TYPE_BITS)
+#define DECODE_SENSOR_ID(type_id_value) (type_id_value & SENSOR_ENCODE_ID_AND_VAL)
 
 typedef union {
     reed_sensor_driver_t reed_sensor;
