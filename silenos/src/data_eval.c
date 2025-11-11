@@ -201,7 +201,7 @@ void *evaluate_gate_state(void *arg)
 
     printf("----\n");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%d (%d), ", gate_state.sensor_states[i].value,gate_state.sensor_states[i].event_counter);
+        printf("%ld (%d), ", gate_state.sensor_states[i].value,gate_state.sensor_states[i].event_counter);
     }
     printf("\n");
 
