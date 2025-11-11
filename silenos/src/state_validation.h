@@ -9,8 +9,8 @@
 #define GATE_CLOSED 1
 
 typedef struct {
-    uint8_t type;
-    uint8_t sensor_id;
+    sensor_type_t type;
+    sensor_id_t sensor_id;
     uint8_t value;
     uint8_t event_counter;
     ztimer_now_t latest_arrive_time;
@@ -28,4 +28,7 @@ extern gate_state_t gate_state;
 
 void init_gate_state(void);
 
-void verify_gate_state(bool new_gate_state);
+void verify_gate_state(bool new_gate_state_value);
+void snapshot_current_gate_state(void);
+
+

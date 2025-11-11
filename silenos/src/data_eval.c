@@ -93,14 +93,16 @@ void await_sensor_events(void)
 
     /* initialize gate state by triggering all sensors once */
     init_gate_state();
+    
+
    
 
     while (true) {
         msg_t msg;
         msg_receive(&msg);
 
-        const uint8_t sensor_type = msg.type >> 8;
-        const uint8_t sensor_id = msg.type & 0x00FF;
+        const uint8_t sensor_type = DECODE_SENSOR_TYPE(msg.type);
+        const uint8_t sensor_id = DECODE_SENSOR_ID(msg.type);
 
         switch (sensor_type) {
         case SENSOR_TYPE_ID_DWAX509M183X0:
@@ -194,6 +196,9 @@ void *evaluate_gate_state(void *arg)
 
     mutex_lock(&gate_state_mutex);
 
+    snapshot_current_gate_state();
+
+
     printf("----\n");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         printf("%d (%d), ", gate_state.sensor_states[i].value,gate_state.sensor_states[i].event_counter);
@@ -201,6 +206,7 @@ void *evaluate_gate_state(void *arg)
     printf("\n");
 
     int final_state = 0;
+    
 
     /* sensor check for configuration of multiple equivalent (ordered) reed sensors */
     switch (gate_state.sensor_mode)
