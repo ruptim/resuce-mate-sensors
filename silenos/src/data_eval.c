@@ -5,17 +5,14 @@
 #include "sensors.h"
 #include "state_validation.h"
 
-
 #include "ztimer.h"
 #include <stdio.h>
-
-/* -------------- type definitions ------------------ */
 
 #define MAX_EVENTS_FOR_SENSOR_FAULT 200
 
 /* ------------ variable declarations ---------------- */
 
-
+static const int majority_threshold = ((NUM_UNIQUE_SENSOR_VALUES & 0x1) == 0x0 ? NUM_UNIQUE_SENSOR_VALUES >> 0x1 : (NUM_UNIQUE_SENSOR_VALUES >> 0x1) + 1);
 
 #define RCV_QUEUE_SIZE 8
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
@@ -24,10 +21,9 @@ static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */
 #define TEMPORAL_CONFIRM_TIMER_INTERVAL_MS 2000
-static ztimer_t temporal_confirm_timer  = {0};
+static ztimer_t temporal_confirm_timer = { 0 };
 
 static long long sensor_event_counter = 0;
-
 
 static mutex_t gate_state_mutex = MUTEX_INIT;
 
@@ -49,16 +45,14 @@ void temporal_confirm_timer_callback(void *args)
 }
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
-{   
+{
     ztimer_acquire(ZTIMER_USEC);
     ztimer_now_t time = ztimer_now(ZTIMER_USEC);
     ztimer_release(ZTIMER_USEC);
 
-
     mutex_lock(&gate_state_mutex);
 
-    if (!gate_state.sensor_states[sensor_id].is_masked){
-
+    if (!gate_state.sensor_states[sensor_id].is_masked) {
         gate_state.sensor_states[sensor_id].sensor_id = sensor_id;
         gate_state.sensor_states[sensor_id].type = sensor_type;
         gate_state.sensor_states[sensor_id].latest_arrive_time = time;
@@ -74,12 +68,10 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
         printf("Sensor %d (%s): %d, %lu\n", sensor_id,
-           sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
+               sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
     }
 
     mutex_unlock(&gate_state_mutex);
-
-  
 }
 
 void await_sensor_events(void)
@@ -89,12 +81,8 @@ void await_sensor_events(void)
     /* initialize timer callback */
     temporal_confirm_timer.callback = temporal_confirm_timer_callback;
 
-
     /* initialize gate state by triggering all sensors once */
     init_gate_state();
-    
-
-   
 
     while (true) {
         msg_t msg;
@@ -176,17 +164,32 @@ bool compare_sensor_pin_state(sensor_state_t sensor, uint8_t comp_state)
 
 int eval_equal_ordered_mode(void)
 {
-    int state = 0;
+    int state = 1;
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         if (compare_sensor_pin_state(gate_state.sensor_states[i], REED_SENSOR_ACTIVATED)) {
-            state |= 1;
+            state &= 1;
         }
         else {
-            state &= 0;
+            state = 0;
         }
         gate_state.sensor_states[i].event_counter = 0;
     }
     return state;
+}
+
+int eval_majority_ordered_mode(void)
+{
+    int state = 0;
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        if (compare_sensor_pin_state(gate_state.sensor_states[i], REED_SENSOR_ACTIVATED)) {
+            state++;
+        }
+
+        gate_state.sensor_states[i].event_counter = 0;
+    }
+
+    /* are the majority of values in their "activated" state */
+    return state >= majority_threshold;
 }
 
 void *evaluate_gate_state(void *arg)
@@ -197,15 +200,13 @@ void *evaluate_gate_state(void *arg)
 
     snapshot_current_gate_state();
 
-
     printf("----\n");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%ld (%d), ", gate_state.sensor_states[i].value,gate_state.sensor_states[i].event_counter);
+        printf("%ld (%d), ", gate_state.sensor_states[i].value, gate_state.sensor_states[i].event_counter);
     }
     printf("\n");
 
     int final_state = 0;
-    
 
     /* sensor check for configuration of multiple equivalent (ordered) reed sensors */
     switch (gate_state.sensor_mode)
@@ -214,12 +215,13 @@ void *evaluate_gate_state(void *arg)
     case EQUAL_ORDERED:
         final_state = eval_equal_ordered_mode();
         break;
+    case MAJORITY_ORDERED:
+        final_state = eval_majority_ordered_mode();
     default:
         break;
     }
 
     mutex_unlock(&gate_state_mutex);
-   
 
     printf("Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
 
