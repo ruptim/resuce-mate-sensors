@@ -11,15 +11,16 @@
 typedef struct {
     sensor_type_t type;
     sensor_id_t sensor_id;
+    sensor_id_t value_id;
     uint32_t value; // TODO: has to me more than 8 to support dwax 
     uint8_t event_counter;
     ztimer_now_t latest_arrive_time;
     bool is_masked;
-} sensor_state_t;
+} sensor_value_state_t;
 
 typedef struct {
     bool state;
-    sensor_state_t sensor_states[NUM_UNIQUE_SENSOR_VALUES];
+    sensor_value_state_t sensor_states[NUM_UNIQUE_SENSOR_VALUES];
     multi_sensor_mode_t sensor_mode;
 
 } gate_state_t;

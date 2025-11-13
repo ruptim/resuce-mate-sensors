@@ -5,7 +5,7 @@ import pathlib
 from enum import Enum
 import json
 from argparse import ArgumentParser
-from csnake import CodeWriter, Variable, Function
+from csnake import CodeWriter, Variable, Function, Subscript, TextModifier
 import numpy as np
 
 parser = ArgumentParser()
@@ -208,6 +208,9 @@ def main():
 
         s_name = f"sensor_{i + 1}_{name_base}"
 
+        sensor_id = TextModifier(f"SENSOR_{i+1}_ID")
+        cw.add_define(sensor_id.text, i)
+
         ## create sensor contact defines and callback arguments
 
         init_code_writer.add_line(
@@ -231,8 +234,8 @@ def main():
                 init_code_writer.add_lines(
                     [
                         f"alarm_cb_args[{s_id_nc}].pid = thread_getpid();",
-                        f"alarm_cb_args[{s_id_nc}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NC.value},{id_counter});",
-                        f"alarm_cb_args[{s_id_nc}].msg.content.ptr = (void *)&registered_sensors[{i}];\n",
+                        f"alarm_cb_args[{s_id_nc}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.REED_NC.value},{s_id_nc});",
+                        f"alarm_cb_args[{s_id_nc}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};\n",
                         "\n",
                     ]
                 )
@@ -251,8 +254,8 @@ def main():
                 init_code_writer.add_lines(
                     [
                         f"alarm_cb_args[{s_id_no}].pid = thread_getpid();",
-                        f"alarm_cb_args[{s_id_no}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.REED_NO.value},{id_counter});",
-                        f"alarm_cb_args[{s_id_no}].msg.content.ptr = (void *)&registered_sensors[{i}];",
+                        f"alarm_cb_args[{s_id_no}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.REED_NO.value},{s_id_no});",
+                        f"alarm_cb_args[{s_id_no}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};",
                         "\n",
                     ]
                 )
@@ -266,7 +269,7 @@ def main():
                 init_code_writer.add_lines(
                     [
                         "/* first cast to specific param type and then to base params type for the array. */",
-                        f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                        f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
                         f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
                         f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
                         f"    .nc_int_flank = GPIO_BOTH,",
@@ -278,7 +281,7 @@ def main():
                         f"    .use_external_pulldown = {external_pulldown()},",
                         f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
                         "\n",
-                        f"if ((ret = reed_sensor_driver_init(&registered_sensors[{i}].reed_sensor, &registered_sensors_params[{i}].reed_sensor_params)) != 0){{",
+                        f"if ((ret = reed_sensor_driver_init(&{Subscript(registered_sensors, sensor_id)}.reed_sensor, &{Subscript(registered_sensors_params, sensor_id)}.reed_sensor_params)) != 0){{",
                         "\treturn ret;",
                         "}",
                         "\n\n",
@@ -288,7 +291,7 @@ def main():
                  init_code_writer.add_lines(
                     [
                         "/* first cast to specific param type and then to base params type for the array. */",
-                        f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                        f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
                         f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
                         f"    .nc_int_flank = GPIO_BOTH,",
                         f"    .nc_callback = reed_nc_callback,",
@@ -296,7 +299,7 @@ def main():
                         f"    .use_external_pulldown = {external_pulldown()},",
                         f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
                         "\n",
-                        f"if ((ret = reed_sensor_driver_init(&registered_sensors[{i}].reed_sensor, &registered_sensors_params[{i}].reed_sensor_params)) != 0){{",
+                        f"if ((ret = reed_sensor_driver_init(&{Subscript(registered_sensors, sensor_id)}.reed_sensor, &{Subscript(registered_sensors_params, sensor_id)}.reed_sensor_params)) != 0){{",
                         "\treturn ret;",
                         "}",
                         "\n\n",
@@ -307,7 +310,7 @@ def main():
                 init_code_writer.add_lines(
                 [
                     "/* first cast to specific param type and then to base params type for the array. */",
-                    f"registered_sensors_params[{i}] = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                    f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
                     f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
                     f"    .no_int_flank = GPIO_BOTH,",
                     f"    .no_callback = reed_no_callback,",
@@ -315,7 +318,7 @@ def main():
                     f"    .use_external_pulldown = {external_pulldown()},",
                     f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
                     "\n",
-                    f"if ((ret = reed_sensor_driver_init(&registered_sensors[{i}].reed_sensor, &registered_sensors_params[{i}].reed_sensor_params)) != 0){{",
+                    f"if ((ret = reed_sensor_driver_init(&{Subscript(registered_sensors, sensor_id)}.reed_sensor, &{Subscript(registered_sensors_params, sensor_id)}[{i}].reed_sensor_params)) != 0){{",
                     "\treturn ret;",
                     "}",
                     "\n\n",
@@ -329,12 +332,13 @@ def main():
             init_code_writer.add_lines(
                 [
                     f"alarm_cb_args[{s_id}].pid = thread_getpid();"
-                    f"alarm_cb_args[{s_id}].msg.type = ENCODE_SENSOR_TYPE_ID({SensorTypeID.DWAX.value},{id_counter});"
-                    f"alarm_cb_args[{s_id}].msg.content.ptr = (void *)&registered_sensors[{i}];",
+                    f"alarm_cb_args[{s_id}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.DWAX.value},{s_id});"
+                    f"alarm_cb_args[{s_id}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};",
                     "\n",
                 ]
             )
             id_counter += 1
+            # TODO: initialization of dwax
 
         cw.add_line(ignore_indent=True)
 

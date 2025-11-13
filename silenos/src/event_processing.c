@@ -30,8 +30,8 @@ static mutex_t gate_state_mutex = MUTEX_INIT;
 /* ------------ Prototype declarations ---------------- */
 
 static void temporal_confirm_timer_callback(void *args);
-static bool compare_sensor_pin_state(sensor_state_t sensor, uint8_t comp_state);
-static void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value);
+static bool compare_sensor_pin_state(sensor_value_state_t sensor, uint8_t comp_state);
+static void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id,  int value);
 static void *evaluate_gate_state(void *arg);
 
 /* ------------ function definitions ---------------- */
@@ -44,7 +44,7 @@ void temporal_confirm_timer_callback(void *args)
                   evaluate_gate_state, NULL, "gate_eval_thread");
 }
 
-void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
+void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, int value)
 {
     ztimer_acquire(ZTIMER_USEC);
     ztimer_now_t time = ztimer_now(ZTIMER_USEC);
@@ -52,18 +52,18 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, int value)
 
     mutex_lock(&gate_state_mutex);
 
-    if (!gate_state.sensor_states[sensor_id].is_masked) {
-        gate_state.sensor_states[sensor_id].sensor_id = sensor_id;
-        gate_state.sensor_states[sensor_id].type = sensor_type;
-        gate_state.sensor_states[sensor_id].latest_arrive_time = time;
-        gate_state.sensor_states[sensor_id].value = value;
-        gate_state.sensor_states[sensor_id].event_counter += 1;
+    if (!gate_state.sensor_states[value_id].is_masked) {
+        // gate_state.sensor_states[sensor_id].id = sensor_id;
+        // gate_state.sensor_states[sensor_id].type = sensor_type;
+        gate_state.sensor_states[value_id].latest_arrive_time = time;
+        gate_state.sensor_states[value_id].value = value;
+        gate_state.sensor_states[value_id].event_counter += 1;
         sensor_event_counter++;
 
-        if (gate_state.sensor_states[sensor_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
-            printf("Sensor %d reached maximum events. Possible fault or tampering.\n", sensor_id);
+        if (gate_state.sensor_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
+            printf("Sensor %d reached maximum events. Possible fault or tampering.\n", value_id);
             // TODO mask sensor and report after timer expired
-            gate_state.sensor_states[sensor_id].is_masked = true;
+            gate_state.sensor_states[value_id].is_masked = true;
         }
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
@@ -90,6 +90,7 @@ void await_sensor_events(void)
 
         const uint8_t sensor_type = DECODE_SENSOR_TYPE(msg.type);
         const uint8_t sensor_id = DECODE_SENSOR_ID(msg.type);
+        const uint8_t value_id = DECODE_VALUE_ID(msg.type);
 
         switch (sensor_type) {
         case SENSOR_TYPE_ID_DWAX509M183X0:
@@ -97,7 +98,7 @@ void await_sensor_events(void)
             dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
             int distance_um = dwax509m183x0_distance_um(dev);
 
-            new_sensor_event(sensor_id, sensor_type, distance_um);
+            new_sensor_event(sensor_id, sensor_type, value_id, distance_um);
 
             break;
         case SENSOR_TYPE_ID_REED_SWITCH_NC:
@@ -106,7 +107,7 @@ void await_sensor_events(void)
             reed_sensor_val_t nc_val;
             reed_sensor_driver_read_nc(reed_nc, &nc_val);
 
-            new_sensor_event(sensor_id, sensor_type, nc_val);
+            new_sensor_event(sensor_id, sensor_type, value_id, nc_val);
             break;
         case SENSOR_TYPE_ID_REED_SWITCH_NO:
             (void)
@@ -115,7 +116,7 @@ void await_sensor_events(void)
             reed_sensor_val_t no_val;
             reed_sensor_driver_read_no(reed_no, &no_val);
 
-            new_sensor_event(sensor_id, sensor_type, no_val);
+            new_sensor_event(sensor_id, sensor_type, value_id, no_val);
 
             break;
         }
@@ -147,7 +148,7 @@ void await_sensor_events(void)
     }
 }
 
-bool compare_sensor_pin_state(sensor_state_t sensor, uint8_t comp_state)
+bool compare_sensor_pin_state(sensor_value_state_t sensor, uint8_t comp_state)
 {
     bool is_nc_pin = (sensor.type == SENSOR_TYPE_ID_REED_SWITCH_NC);
     bool check_is_activated = (comp_state == REED_SENSOR_ACTIVATED);

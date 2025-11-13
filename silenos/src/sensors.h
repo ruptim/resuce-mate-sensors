@@ -6,8 +6,9 @@
 #include "reed_sensor_driver.h"
 
 #define SENSOR_TYPE_ID_DWAX509M183X0  1
-#define SENSOR_TYPE_ID_REED_SWITCH_NC 2
-#define SENSOR_TYPE_ID_REED_SWITCH_NO 3
+#define SENSOR_TYPE_ID_REED_SWITCH 2
+#define SENSOR_TYPE_ID_REED_SWITCH_NC 3
+#define SENSOR_TYPE_ID_REED_SWITCH_NO 4
 
 #define REED_SENSOR_DEBOUNCE_MS       60
 #define REED_SENSOR_PIN_STATE_OPEN    0
@@ -27,10 +28,11 @@ typedef enum {
 
 
 #define SENSOR_ENCODE_TYPE_BITS 4
-#define SENSOR_ENCODE_ID_BITS 4
-#define ENCODE_SENSOR_TYPE_ID_BITS (SENSOR_ENCODE_TYPE_BITS+SENSOR_ENCODE_ID_BITS)
-#define SENSOR_ENCODE_ID_AND_VAL ((SENSOR_ENCODE_ID_BITS*SENSOR_ENCODE_ID_BITS)-1)
-
+#define SENSOR_ENCODE_SENSOR_ID_BITS 3
+#define SENSOR_ENCODE_VALUE_ID_BITS 4
+#define SENSOR_ENCODE_SENSOR_TYPE_MASK ((0x1 << SENSOR_ENCODE_TYPE_BITS)-1)
+#define SENSOR_ENCODE_VALUE_ID_MASK ((0x1 << SENSOR_ENCODE_VALUE_ID_BITS)-1)
+#define ENCODE_SENSOR_TYPE_IDS_BITS (SENSOR_ENCODE_TYPE_BITS+SENSOR_ENCODE_SENSOR_ID_BITS+SENSOR_ENCODE_VALUE_ID_BITS)
 /*
 * Macro to encode sensor type and global sensor id in a integer whose size 
 * is defined by SENSOR_ENCODE_TYPE_BITS and SENSOR_ENCODE_ID_BITS.
@@ -41,7 +43,14 @@ typedef enum {
 * |   Sensor Type (X bits)     |   Sensor Number (X bits)   |
 * |---------------------------------------------------------|
 */
-#define ENCODE_SENSOR_TYPE_ID(type, id) ((type) << SENSOR_ENCODE_TYPE_BITS | (id))
+#define ENCODE_SENSOR_TYPE_IDS(sensor_id, type, value_id) (( (sensor_id) << SENSOR_ENCODE_TYPE_BITS | (type) ) << SENSOR_ENCODE_VALUE_ID_BITS | (value_id))
+
+
+#define DECODE_SENSOR_ID(type_id_value) (type_id_value >> (SENSOR_ENCODE_TYPE_BITS +SENSOR_ENCODE_VALUE_ID_BITS))
+#define DECODE_SENSOR_TYPE(type_id_value) ((type_id_value >> SENSOR_ENCODE_VALUE_ID_BITS) & SENSOR_ENCODE_SENSOR_TYPE_MASK)
+#define DECODE_VALUE_ID(type_id_value) (type_id_value & SENSOR_ENCODE_VALUE_ID_MASK)
+
+
 
 // Select uint type based on SENSOR_ENCODE_TYPE_BITS
 #if SENSOR_ENCODE_TYPE_BITS <= 8
@@ -72,8 +81,6 @@ typedef enum {
 #endif
 
 
-#define DECODE_SENSOR_TYPE(type_id_value) (type_id_value >> SENSOR_ENCODE_TYPE_BITS)
-#define DECODE_SENSOR_ID(type_id_value) (type_id_value & SENSOR_ENCODE_ID_AND_VAL)
 
 typedef union {
     reed_sensor_driver_t reed_sensor;

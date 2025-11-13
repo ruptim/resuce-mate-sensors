@@ -14,7 +14,8 @@ CBOR message structure:
     "l1": SENSOR_CONFIG_LOCATION_POLDER,
     "l2": SENSOR_CONFIG_LOCATION_GATE,
     "tb": SENSOR_ENCODE_TYPE_BITS,
-    "ib": SENSOR_ENCODE_ID_BITS,
+    "ib": SENSOR_ENCODE_SENSOR_ID_BITS,
+    "vb": SENSOR_ENCODE_VALUE_ID_BITS,
     "i": [
         ENCODE_SENSOR_TYPE_ID(type_1,id_1),
         ...,
@@ -38,8 +39,7 @@ CBOR message structure:
 --------------------------------------------
 */
 
-
-#define CBOR_MSG_MAP_LENGTH                     10 // items in map
+#define CBOR_MSG_MAP_LENGTH                     11 // items in map
 
 /* bytes needed to encode data types. includes map, text (labels), arrays */
 #define CBOR_MSG_TYPE_BYTES                     (CBOR_MSG_MAP_LENGTH + 1 + 3) // Map items + map + arrays
@@ -49,7 +49,7 @@ CBOR message structure:
 #define CBOR_MSG_SENSOR_ENCODE_BITS_STRING_SIZE 2
 #define CBOR_MSG_SENSOR_ENCODE_BITS_VALUE_SIZE  1 // 8 bit
 #define CBOR_MSG_SENSOR_IDENTIFIER_STRING_SIZE  1
-#define CBOR_MSG_SENSOR_IDENTIFIER_VALUE_SIZE   (ENCODE_SENSOR_TYPE_ID_BITS) // defined in "sensors.h"
+#define CBOR_MSG_SENSOR_IDENTIFIER_VALUE_SIZE   (ENCODE_SENSOR_TYPE_IDS_BITS) // defined in "sensors.h"
 #define CBOR_MSG_SENSOR_VALUE_STRING_SIZE       1
 #define CBOR_MSG_SENSOR_VALUES_SIZE             (SENSORS_MAX_VALUE_BYTES_NEEDED) // defined in "sensor_config.h"
 #define CBOR_MSG_SENSOR_COUNTER_STRING_SIZE     1
@@ -64,8 +64,8 @@ CBOR message structure:
 #define CBOR_BUFFER_SIZE                        CBOR_MSG_TYPE_BYTES +        \
                              (CBOR_MSG_LOCATION_PART_STRING_SIZE * 2) +      \
                              (CBOR_MSG_LOCATION_PART_VALUE_SIZE * 2) +       \
-                             (CBOR_MSG_SENSOR_ENCODE_BITS_STRING_SIZE * 2) + \
-                             (CBOR_MSG_SENSOR_ENCODE_BITS_VALUE_SIZE * 2) +  \
+                             (CBOR_MSG_SENSOR_ENCODE_BITS_STRING_SIZE * 3) + \
+                             (CBOR_MSG_SENSOR_ENCODE_BITS_VALUE_SIZE * 3) +  \
                              CBOR_MSG_SENSOR_IDENTIFIER_STRING_SIZE +        \
                              CBOR_MSG_SENSOR_COUNTER_STRING_SIZE +           \
                              ((CBOR_MSG_SENSOR_IDENTIFIER_VALUE_SIZE +       \
@@ -88,6 +88,8 @@ CBOR message structure:
                                                                                                                                                         CBOR_MSG_SENSOR_ENCODE_BITS_VALUE_SIZE) +               \
                                                                                                                                                        (CBOR_MSG_SENSOR_ENCODE_BITS_STRING_SIZE +               \
                                                                                                                                                         CBOR_MSG_SENSOR_ENCODE_BITS_VALUE_SIZE) +               \
+                                                                                                                                                       (CBOR_MSG_SENSOR_ENCODE_BITS_STRING_SIZE +               \
+                                                                                                                                                        CBOR_MSG_SENSOR_ENCODE_BITS_VALUE_SIZE) +               \
                                                                                                                                                        CBOR_MSG_SENSOR_IDENTIFIER_STRING_SIZE +                 \
                                                                                                                                                        identifier_value_sizes +                                 \
                                                                                                                                                        CBOR_MSG_SENSOR_COUNTER_STRING_SIZE +                    \
@@ -101,8 +103,7 @@ CBOR message structure:
                                                                                                                                                        CBOR_MSG_SENSOR_TIMESTAMP_STRING_SIZE +                  \
                                                                                                                                                        timestamp_size
 
-
-    /**
+/**
  * @brief 
  * 
  * @param buf           cbor buffer for the encoded data
@@ -112,8 +113,7 @@ CBOR message structure:
  * @param seq_num       local timestamp of time of sending 
  * @return              -1 when failing to encode the data.
  */
-    int
-    encode_data(uint8_t *buf, size_t buf_size, gate_state_t gate_state, int seq_num, uint32_t timestamp_s);
+int encode_data(uint8_t *buf, size_t buf_size, gate_state_t gate_state, int seq_num, uint32_t timestamp_s);
 
 /**
  * @brief Send the data via the implemented network stack.
