@@ -18,7 +18,7 @@
  * @}
  */
 
-#include "data_eval.h"
+#include "event_processing.h"
 #include "periph_cpu_common.h"
 #include <stdio.h>
 #include <sys/unistd.h>
