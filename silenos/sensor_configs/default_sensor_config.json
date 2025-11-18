@@ -1,5 +1,5 @@
 {
-    "location": "polder11/gate13/",
+    "location": "polder11/gate13",
     "sensors": [
         {
             "name": "polder11/gate13/01",
@@ -29,11 +29,11 @@
             "name": "polder11/gate13/03",
             "type": "1",
             "port_pin1": [
-                1,
-                2
-            ],
-            "internal_pull_down": false
+                0,
+                4
+            ]
+             
         }
     ],
-    "sensor_config": "EQUAL_ORDERED"
+    "multi_sensor_mode": "EQUAL_ORDERED"
 }
