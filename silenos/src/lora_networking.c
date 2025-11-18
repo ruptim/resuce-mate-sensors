@@ -91,7 +91,7 @@ static void _join_lorawan_network(const netif_t *netif)
         while (ztimer_now(ZTIMER_SEC) - timeout < 10000) {
             /* Wait for a while to allow the join process to complete */
             ztimer_sleep(ZTIMER_SEC, 1);
-
+            puts("Checking LoRaWAN connection ...");
             netif_get_opt(netif, NETOPT_LINK, 0, &status, sizeof(status));
             if (status == NETOPT_ENABLE) {
                 printf("Joined LoRaWAN network successfully\n");

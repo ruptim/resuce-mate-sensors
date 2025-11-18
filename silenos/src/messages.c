@@ -54,7 +54,7 @@ int encode_data(uint8_t *buf,
     ret |= cbor_encoder_create_array(&map_encoder, &array_encoder_i, NUM_UNIQUE_SENSOR_VALUES);
 
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; ++i) {
-        sensor_value_state_t sensor = gate_state.sensor_states[i];
+        sensor_value_state_t sensor = gate_state.sensor_value_states[i];
         ret |= cbor_encode_uint(&array_encoder_i, ENCODE_SENSOR_TYPE_IDS(sensor.sensor_id,sensor.type, sensor.value_id));
     }
     ret |= cbor_encoder_close_container(&map_encoder, &array_encoder_i);
@@ -63,7 +63,7 @@ int encode_data(uint8_t *buf,
     ret |= cbor_encode_text_stringz(&map_encoder, "v"); /* 1 byte */
     ret |= cbor_encoder_create_array(&map_encoder, &array_encoder_v, NUM_UNIQUE_SENSOR_VALUES);
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; ++i) {
-        sensor_value_state_t sensor = gate_state.sensor_states[i];
+        sensor_value_state_t sensor = gate_state.sensor_value_states[i];
 
         ret |= cbor_encode_uint(&array_encoder_v, sensor.value);
     }
@@ -74,7 +74,7 @@ int encode_data(uint8_t *buf,
     ret |= cbor_encoder_create_array(&map_encoder, &array_encoder_c, NUM_UNIQUE_SENSOR_VALUES);
 
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; ++i) {
-        sensor_value_state_t sensor = gate_state.sensor_states[i];
+        sensor_value_state_t sensor = gate_state.sensor_value_states[i];
 
         ret |= cbor_encode_uint(&array_encoder_c, sensor.event_counter);
     }
@@ -129,9 +129,9 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
     uint8_t counter_sizes = 0;
     uint8_t value_sizes = 0;
     for (int i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        identifier_sizes += cbor_size_of(ENCODE_SENSOR_TYPE_IDS(state.sensor_states[i].sensor_id,state.sensor_states[i].type, state.sensor_states[i].value_id));
-        counter_sizes += cbor_size_of(state.sensor_states[i].event_counter);
-        value_sizes += cbor_size_of(state.sensor_states[i].value);
+        identifier_sizes += cbor_size_of(ENCODE_SENSOR_TYPE_IDS(state.sensor_value_states[i].sensor_id,state.sensor_value_states[i].type, state.sensor_value_states[i].value_id));
+        counter_sizes += cbor_size_of(state.sensor_value_states[i].event_counter);
+        value_sizes += cbor_size_of(state.sensor_value_states[i].value);
     }
 
     cbor_buf_size = COMPUTE_CBOR_BUFFER_SIZE(cbor_size_of(SENSOR_CONFIG_LOCATION_POLDER), cbor_size_of(SENSOR_CONFIG_LOCATION_GATE), identifier_sizes, counter_sizes, value_sizes, cbor_size_of(seq_num), cbor_size_of(timestamp));

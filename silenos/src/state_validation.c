@@ -27,9 +27,9 @@ void init_gate_state(void)
         const sensor_type_t sensor_type = DECODE_SENSOR_TYPE(alarm_cb_args[i].msg.type);
         const sensor_id_t sensor_id = DECODE_SENSOR_ID(alarm_cb_args[i].msg.type);
         const sensor_id_t value_id = DECODE_VALUE_ID(alarm_cb_args[i].msg.type);
-        gate_state.sensor_states[i].sensor_id = sensor_id;
-        gate_state.sensor_states[i].type = sensor_type;
-        gate_state.sensor_states[i].value_id = value_id;
+        gate_state.sensor_value_states[i].sensor_id = sensor_id;
+        gate_state.sensor_value_states[i].type = sensor_type;
+        gate_state.sensor_value_states[i].value_id = value_id;
 
         msg_send(&alarm_cb_args[i].msg, alarm_cb_args[i].pid);
     }
@@ -77,12 +77,12 @@ void verify_sensors(void)
     size_t i = 0;
     while (i < NUM_UNIQUE_SENSOR_VALUES) {
 
-        sensor_value_state_t cur_sensor_val = gate_state.sensor_states[i];
+        sensor_value_state_t cur_sensor_val = gate_state.sensor_value_states[i];
         switch (cur_sensor_val.type) {
         case SENSOR_TYPE_ID_REED_SWITCH_NC:
             /* if a corresponding NO pin exists, use it to verify the sensor. */
-            if (i + 1 < NUM_UNIQUE_SENSOR_VALUES && cur_sensor_val.sensor_id == gate_state.sensor_states[i + 1].sensor_id) {
-                sensor_fault[cur_sensor_val.sensor_id] = verify_reed_sensor(gate_state.sensor_states[i], gate_state.sensor_states[i + 1]);
+            if (i + 1 < NUM_UNIQUE_SENSOR_VALUES && cur_sensor_val.sensor_id == gate_state.sensor_value_states[i + 1].sensor_id) {
+                sensor_fault[cur_sensor_val.sensor_id] = verify_reed_sensor(gate_state.sensor_value_states[i], gate_state.sensor_value_states[i + 1]);
 
                 i++; /* skip the following NC state value */
             }

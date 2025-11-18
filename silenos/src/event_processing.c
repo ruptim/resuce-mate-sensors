@@ -52,18 +52,18 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
 
     mutex_lock(&gate_state_mutex);
 
-    if (!gate_state.sensor_states[value_id].is_masked) {
-        // gate_state.sensor_states[sensor_id].id = sensor_id;
-        // gate_state.sensor_states[sensor_id].type = sensor_type;
-        gate_state.sensor_states[value_id].latest_arrive_time = time;
-        gate_state.sensor_states[value_id].value = value;
-        gate_state.sensor_states[value_id].event_counter += 1;
+    if (!gate_state.sensor_value_states[value_id].is_masked) {
+        // gate_state.sensor_value_states[sensor_id].id = sensor_id;
+        // gate_state.sensor_value_states[sensor_id].type = sensor_type;
+        gate_state.sensor_value_states[value_id].latest_arrive_time = time;
+        gate_state.sensor_value_states[value_id].value = value;
+        gate_state.sensor_value_states[value_id].event_counter += 1;
         sensor_event_counter++;
 
-        if (gate_state.sensor_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
+        if (gate_state.sensor_value_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
             printf("Sensor %d reached maximum events. Possible fault or tampering.\n", value_id);
             // TODO mask sensor and report after timer expired
-            gate_state.sensor_states[value_id].is_masked = true;
+            gate_state.sensor_value_states[value_id].is_masked = true;
         }
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
@@ -163,17 +163,39 @@ bool compare_sensor_pin_state(sensor_value_state_t sensor, uint8_t comp_state)
     }
 }
 
+int verify_order(void){
+    
+
+    //TODO: verifiy order for both phases (opening and closing)
+    int order_valid = 1;
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        if (i > 0 ? (gate_state.sensor_value_states[i].latest_arrive_time > gate_state.sensor_value_states[i-1].latest_arrive_time) : true)
+        {
+            order_valid &= 1;
+        }
+        else {
+            order_valid = 0;
+        }
+        
+    }
+    return order_valid;
+}
+
 int eval_equal_ordered_mode(void)
 {
     int state = 1;
+     /* check if all value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        if (compare_sensor_pin_state(gate_state.sensor_states[i], REED_SENSOR_ACTIVATED)) {
+        if (compare_sensor_pin_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)
+        ) {
             state &= 1;
+            gate_state.sensor_triggered_states[i] = true;
         }
         else {
             state = 0;
+            gate_state.sensor_triggered_states[i] = false;
         }
-        gate_state.sensor_states[i].event_counter = 0;
+        gate_state.sensor_value_states[i].event_counter = 0;
     }
     return state;
 }
@@ -181,15 +203,21 @@ int eval_equal_ordered_mode(void)
 int eval_majority_ordered_mode(void)
 {
     int state = 0;
+    /* check how many value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        if (compare_sensor_pin_state(gate_state.sensor_states[i], REED_SENSOR_ACTIVATED)) {
+        
+        if (compare_sensor_pin_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
             state++;
+            gate_state.sensor_triggered_states[i] = true;
+
+        }else if (gate_state.sensor_triggered_states[i]){
+            gate_state.sensor_triggered_states[i] = false;
         }
 
-        gate_state.sensor_states[i].event_counter = 0;
+        gate_state.sensor_value_states[i].event_counter = 0;
     }
 
-    /* are the majority of values in their "activated" state */
+    /* are the majority of values in their "activated" state? */
     return state >= majority_threshold;
 }
 
@@ -203,7 +231,7 @@ void *evaluate_gate_state(void *arg)
 
     printf("----\n");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%ld (%d), ", gate_state.sensor_states[i].value, gate_state.sensor_states[i].event_counter);
+        printf("%ld (%d), ", (long unsigned int) gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter);
     }
     printf("\n");
 

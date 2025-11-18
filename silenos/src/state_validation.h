@@ -20,8 +20,10 @@ typedef struct {
 
 typedef struct {
     bool state;
-    sensor_value_state_t sensor_states[NUM_UNIQUE_SENSOR_VALUES];
+    sensor_value_state_t sensor_value_states[NUM_UNIQUE_SENSOR_VALUES];
     multi_sensor_mode_t sensor_mode;
+    bool sensor_triggered_states[NUM_UNIQUE_SENSOR_VALUES];
+    uint8_t activated_sensor_value_count;
 
 } gate_state_t;
 
@@ -30,6 +32,7 @@ extern gate_state_t gate_state;
 void init_gate_state(void);
 
 void verify_gate_state(bool new_gate_state_value);
+
 void snapshot_current_gate_state(void);
 
 
