@@ -7,29 +7,22 @@
  */
 
 /**
- * @ingroup     tests
+ * @ingroup     Silenos
  * @{
  *
  * @file
- * @brief       Interaction between the application layer and the two types of drivers being evaluated for the rescue mate project
+ * @brief       Silenos application main. Gate monitoring with configured sensors and reporting with LoRaWAN.
  *
- * @author      Jan Thies <jan.thies@haw-hamburg.de>
+ * @author      Jan Thies <jan.thies@haw-hamburg.de>, Timon Rupet <timon.rupelt@haw-hamburg.de>
  *
  * @}
  */
 
-#include "periph_cpu_common.h"
 #include <stdio.h>
 #include <sys/unistd.h>
-#include <time.h>
-#include <string.h>
 
-#include "board.h"
-#include "msg.h"
 #include "thread.h"
 #include "ztimer.h"
-
-
 
 
 /* Application headers */
