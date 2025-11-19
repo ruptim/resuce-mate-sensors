@@ -3,9 +3,6 @@
 #include "sensor_config.h"
 #include "lora_networking.h"
 
-/* driver headers */
-#include "dwax509m183x0.h"
-#include "reed_sensor_driver.h"
 
 #include <stdio.h>
 #include <sys/unistd.h>

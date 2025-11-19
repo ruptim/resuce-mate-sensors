@@ -156,14 +156,14 @@ void *await_sensor_events(void *arg)
         const value_id_t value_id = DECODE_VALUE_ID(msg.type);
 
         switch (sensor_type) {
-        case SENSOR_TYPE_ID_DWAX509M183X0:
-            (void)sensor_id;
-            dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
-            int distance_um = dwax509m183x0_distance_um(dev);
+        // case SENSOR_TYPE_ID_DWAX509M183X0:
+        //     (void)sensor_id;
+        //     dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
+        //     int distance_um = dwax509m183x0_distance_um(dev);
 
-            new_sensor_event(sensor_id, sensor_type, value_id, distance_um);
+        //     new_sensor_event(sensor_id, sensor_type, value_id, distance_um);
 
-            break;
+        //     break;
         case SENSOR_TYPE_ID_REED_SWITCH_NC:
             (void)sensor_id;
             reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;

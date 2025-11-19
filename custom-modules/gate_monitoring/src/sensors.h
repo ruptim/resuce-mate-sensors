@@ -2,7 +2,6 @@
 
 #include "msg.h"
 
-#include "dwax509m183x0.h"
 #include "reed_sensor_driver.h"
 
 #define SENSOR_TYPE_ID_DWAX509M183X0  1
@@ -110,12 +109,12 @@ typedef enum {
 
 typedef union {
     reed_sensor_driver_t reed_sensor;
-    dwax509m183x0_t inductive_sensor;
+    // dwax509m183x0_t inductive_sensor;
 } sensor_base_type_t;
 
 typedef union {
     reed_sensor_driver_params_t reed_sensor_params;
-    dwax509m183x0_params_t inductive_sensor_params;
+    // dwax509m183x0_params_t inductive_sensor_params;
 } sensor_base_params_t;
 
 typedef struct {
