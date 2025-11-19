@@ -5,17 +5,17 @@ alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 sensor_base_type_t registered_sensors[3];
 sensor_base_params_t registered_sensors_params[3];
 
-int init_sensors(void)
+int init_sensors(kernel_pid_t receive_pid)
 {
     memset(alarm_cb_args, 0, sizeof(alarm_cb_args));
 
     int ret = 0;
     /* -------------------- init code for sensor 'sensor_1_reed' -------------------- */
-    alarm_cb_args[SENSOR_1_REED_NC_ID].pid = thread_getpid();
+    alarm_cb_args[SENSOR_1_REED_NC_ID].pid = receive_pid;
     alarm_cb_args[SENSOR_1_REED_NC_ID].msg.type = ENCODE_SENSOR_TYPE_IDS(0,SENSOR_TYPE_ID_REED_SWITCH_NC,SENSOR_1_REED_NC_ID);
     alarm_cb_args[SENSOR_1_REED_NC_ID].msg.content.ptr = (void *)&registered_sensors[SENSOR_1_ID];
     
-    alarm_cb_args[SENSOR_1_REED_NO_ID].pid = thread_getpid();
+    alarm_cb_args[SENSOR_1_REED_NO_ID].pid = receive_pid;
     alarm_cb_args[SENSOR_1_REED_NO_ID].msg.type = ENCODE_SENSOR_TYPE_IDS(0,SENSOR_TYPE_ID_REED_SWITCH_NO,SENSOR_1_REED_NO_ID);
     alarm_cb_args[SENSOR_1_REED_NO_ID].msg.content.ptr = (void *)&registered_sensors[SENSOR_1_ID];
     
@@ -38,11 +38,11 @@ int init_sensors(void)
     
     
     /* -------------------- init code for sensor 'sensor_2_reed' -------------------- */
-    alarm_cb_args[SENSOR_2_REED_NC_ID].pid = thread_getpid();
+    alarm_cb_args[SENSOR_2_REED_NC_ID].pid = receive_pid;
     alarm_cb_args[SENSOR_2_REED_NC_ID].msg.type = ENCODE_SENSOR_TYPE_IDS(1,SENSOR_TYPE_ID_REED_SWITCH_NC,SENSOR_2_REED_NC_ID);
     alarm_cb_args[SENSOR_2_REED_NC_ID].msg.content.ptr = (void *)&registered_sensors[SENSOR_2_ID];
     
-    alarm_cb_args[SENSOR_2_REED_NO_ID].pid = thread_getpid();
+    alarm_cb_args[SENSOR_2_REED_NO_ID].pid = receive_pid;
     alarm_cb_args[SENSOR_2_REED_NO_ID].msg.type = ENCODE_SENSOR_TYPE_IDS(1,SENSOR_TYPE_ID_REED_SWITCH_NO,SENSOR_2_REED_NO_ID);
     alarm_cb_args[SENSOR_2_REED_NO_ID].msg.content.ptr = (void *)&registered_sensors[SENSOR_2_ID];
     
@@ -65,7 +65,7 @@ int init_sensors(void)
     
     
     /* -------------------- init code for sensor 'sensor_3_reed' -------------------- */
-    alarm_cb_args[SENSOR_3_REED_NC_ID].pid = thread_getpid();
+    alarm_cb_args[SENSOR_3_REED_NC_ID].pid = receive_pid;
     alarm_cb_args[SENSOR_3_REED_NC_ID].msg.type = ENCODE_SENSOR_TYPE_IDS(2,SENSOR_TYPE_ID_REED_SWITCH_NC,SENSOR_3_REED_NC_ID);
     alarm_cb_args[SENSOR_3_REED_NC_ID].msg.content.ptr = (void *)&registered_sensors[SENSOR_3_ID];
     

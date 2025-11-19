@@ -68,7 +68,7 @@ extern sensor_base_params_t registered_sensors_params[3];
 * 
 * @return 0 if all drivers where intialized correctly, -1 otherwise.
 */
-int init_sensors(void);
+int init_sensors(kernel_pid_t receive_pid);
 
 
 #ifdef __cplusplus

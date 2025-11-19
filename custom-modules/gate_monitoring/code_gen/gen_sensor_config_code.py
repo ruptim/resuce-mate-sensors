@@ -182,7 +182,7 @@ def main():
     init_code_writer.add_variable_declaration(registered_sensors_params)
     init_code_writer.add_line(ignore_indent=True)
 
-    init_code_writer.add_line("int init_sensors(void)")
+    init_code_writer.add_line("int init_sensors(kernel_pid_t receive_pid)")
     init_code_writer.open_brace()
 
     init_code_writer.add_lines("memset(alarm_cb_args, 0, sizeof(alarm_cb_args));\n")
@@ -233,7 +233,7 @@ def main():
 
                 init_code_writer.add_lines(
                     [
-                        f"alarm_cb_args[{s_id_nc}].pid = thread_getpid();",
+                        f"alarm_cb_args[{s_id_nc}].pid = receive_pid;",
                         f"alarm_cb_args[{s_id_nc}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.REED_NC.value},{s_id_nc});",
                         f"alarm_cb_args[{s_id_nc}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};\n",
                         "\n",
@@ -253,7 +253,7 @@ def main():
 
                 init_code_writer.add_lines(
                     [
-                        f"alarm_cb_args[{s_id_no}].pid = thread_getpid();",
+                        f"alarm_cb_args[{s_id_no}].pid = receive_pid;",
                         f"alarm_cb_args[{s_id_no}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.REED_NO.value},{s_id_no});",
                         f"alarm_cb_args[{s_id_no}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};",
                         "\n",
@@ -331,7 +331,7 @@ def main():
             cw.add_define(s_id, id_counter)
             init_code_writer.add_lines(
                 [
-                    f"alarm_cb_args[{s_id}].pid = thread_getpid();"
+                    f"alarm_cb_args[{s_id}].pid = receive_pid;"
                     f"alarm_cb_args[{s_id}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.DWAX.value},{s_id});"
                     f"alarm_cb_args[{s_id}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};",
                     "\n",
@@ -368,7 +368,7 @@ def main():
         )
     )
 
-    cw.add_line("int init_sensors(void);")
+    cw.add_line("int init_sensors(kernel_pid_t receive_pid);")
     cw.add_line(ignore_indent=True)
     cw.add_line(ignore_indent=True)
 

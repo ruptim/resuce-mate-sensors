@@ -1,3 +1,4 @@
+#include "gate_monitoring.h"
 #include "event_processing.h"
 #include "sensor_config.h"
 #include "lora_networking.h"
@@ -6,8 +7,6 @@
 #include "dwax509m183x0.h"
 #include "reed_sensor_driver.h"
 
-#include "thread.h"
-
 #include <stdio.h>
 #include <sys/unistd.h>
 #include <errno.h>
@@ -15,9 +14,18 @@
 
 static char monitoring_thread_stack[THREAD_STACKSIZE_MAIN];
 
+static kernel_pid_t thread_pid;
+
 int initialize_monitoring(bool start_lorawan){
 
-     if(init_sensors() != 0){
+    thread_pid = thread_create(monitoring_thread_stack, sizeof(monitoring_thread_stack), THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_SLEEPING,
+                  await_sensor_events, NULL, "gate_monitor_thread");
+    if (-EINVAL == thread_pid) {
+        puts("[ERROR] Failed to create monitoring thread!");
+        return -1;
+    }
+
+     if(init_sensors(thread_pid) != 0){
         puts("[ERROR] Sensors failed to initialized!");
         return -1;
     }
@@ -31,8 +39,6 @@ int initialize_monitoring(bool start_lorawan){
     }
     }
     
-        
-   
     return 0;
 }
 
@@ -40,12 +46,11 @@ int initialize_monitoring(bool start_lorawan){
 
 int start_monitoring_routine(void){
 
-    kernel_pid_t thread_pid = thread_create(monitoring_thread_stack, sizeof(monitoring_thread_stack), THREAD_PRIORITY_MAIN - 1, 0,
-                  await_sensor_events, NULL, "gate_monitor_thread");
+    puts("[INFO] Starting monitoring routine!");
     
-    if (-EINVAL == thread_pid) {
-        puts("[ERROR] Failed to create monitoring thread!");
+    if (thread_wakeup(thread_pid) != 1) {
+        puts("[ERROR] Failed to wake up monitoring thread!");
         return -1;
     }
-    return 0;
+    return thread_pid;
 }

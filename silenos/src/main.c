@@ -48,7 +48,6 @@
 int main(void)
 {
     
-
     ztimer_acquire(ZTIMER_SEC);
     ztimer_sleep(ZTIMER_SEC, 4);
     ztimer_release(ZTIMER_SEC);
@@ -60,6 +59,12 @@ int main(void)
 
     start_monitoring_routine();
 
+
+    while (1)
+    {
+        thread_sleep();
+        // ztimer_sleep(ZTIMER_MSEC, 1000);
+    };
     
 
     return 0;
