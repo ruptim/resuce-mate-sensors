@@ -18,7 +18,6 @@
  * @}
  */
 
-#include "event_processing.h"
 #include "periph_cpu_common.h"
 #include <stdio.h>
 #include <sys/unistd.h>
@@ -30,20 +29,13 @@
 #include "thread.h"
 #include "ztimer.h"
 
-#include "cbor.h"
 
-/* driver headers */
-#include "dwax509m183x0.h"
 
-#include "reed_sensor_driver.h"
 
 /* Application headers */
 
-#include "sensor_config.h"
-#include "messages.h"
-#include "lora_networking.h"
+#include "gate_monitoring.h"
 
-/* Configure run parameters */
 
 
 // - debug output
@@ -63,22 +55,12 @@ int main(void)
 
     puts("Application 'Silenos' starting.");
 
-    if(init_sensors() != 0){
-        puts("Sensors failed to initialized!");
-        return -1;
-    }
-    
 
+    initialize_monitoring(false);
+
+    start_monitoring_routine();
 
     
-    // if(init_lorawan_stack() != 0){
-    //     puts("LoRaWan failed to initialized!");
-    //     return -1;
-    // }
-        
-    puts("Receiving Events!");
-    await_sensor_events();
-
 
     return 0;
 }

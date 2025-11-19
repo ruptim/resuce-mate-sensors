@@ -1,0 +1,13 @@
+{
+  "sensors": [
+    {
+      "name": "polder11/gate13/01",
+      "type": "1",
+      "port_pin1": [1, 9],
+      "port_pin2": [0, 8]
+    }
+
+    
+  ],
+  "sensor_config": "EQUAL_ORDERED"
+}
