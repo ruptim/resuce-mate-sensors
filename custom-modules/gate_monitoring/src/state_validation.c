@@ -5,14 +5,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// - debug output
+#define ENABLE_DEBUG 1
+#include "debug.h"
+
+
+/* the current gate state. */
 gate_state_t gate_state;
 
-gate_state_t gate_state_sending;
+/*  A snapshot of the current gate state. It is used for evaluating and sending the state, without it being changed by new events. */
+gate_state_t gate_state_snapshot;
 
+/* Flag used to indicate intitialization phase, when there is no 'groundtruth'state to compare against. */
 bool init_phase;
 
 
-
+/**
+ * @brief Check whether the sensor values are valid or show inconsistencies.
+ *        What a inconsisten state is, depends on the kind of sensor.
+ * 
+ */
 void verify_sensors(void);
 
 
@@ -20,13 +32,13 @@ void init_gate_state(void)
 {
     init_phase = true;
     gate_state.sensor_mode = ACTIVE_MULTI_SENSOR_MODE;
-    gate_state.state = GATE_OPEN;
+    gate_state.gate_closed = GATE_OPEN;
 
     /* trigger all sensors once to determine current status */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         const sensor_type_t sensor_type = DECODE_SENSOR_TYPE(alarm_cb_args[i].msg.type);
         const sensor_id_t sensor_id = DECODE_SENSOR_ID(alarm_cb_args[i].msg.type);
-        const sensor_id_t value_id = DECODE_VALUE_ID(alarm_cb_args[i].msg.type);
+        const value_id_t value_id = DECODE_VALUE_ID(alarm_cb_args[i].msg.type);
         gate_state.sensor_value_states[i].sensor_id = sensor_id;
         gate_state.sensor_value_states[i].type = sensor_type;
         gate_state.sensor_value_states[i].value_id = value_id;
@@ -37,21 +49,27 @@ void init_gate_state(void)
 
 void snapshot_current_gate_state(void)
 {
-    gate_state_sending = gate_state;
+    gate_state_snapshot = gate_state;
 }
 
-void verify_gate_state(bool new_gate_state)
+void verify_gate_state(bool new_gate_state_value)
 {
     /* in the init phase there is no current known gate state to check against  */
     if (init_phase) {
         init_phase = false;
-        gate_state.state = new_gate_state;
+        gate_state.gate_closed = new_gate_state_value;
         /* return for the time being */
         return;
     }
 
-    if (gate_state.state == new_gate_state) {
+    if (gate_state_snapshot.gate_closed == new_gate_state_value) {
+        //TODO; handle case when state is the same as before.
+    }else{
+        gate_state_snapshot.gate_closed = new_gate_state_value;
     }
+
+
+
 
     verify_sensors();
 
@@ -60,7 +78,7 @@ void verify_gate_state(bool new_gate_state)
     ztimer_now_t timestamp = ztimer_now(ZTIMER_USEC);
     ztimer_release(ZTIMER_USEC);
 
-    send_data(gate_state_sending, timestamp);
+    send_data(gate_state_snapshot, timestamp);
 }
 bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state)
 {
@@ -93,7 +111,7 @@ void verify_sensors(void)
         default:
             break;
         }
-        printf("ID: %d, %d | ", cur_sensor_val.sensor_id, sensor_fault[cur_sensor_val.sensor_id]);
+        DEBUG("ID: %d, %d | ", cur_sensor_val.sensor_id, sensor_fault[cur_sensor_val.sensor_id]);
         i++;
     }
     puts("");
