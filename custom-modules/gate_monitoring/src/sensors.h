@@ -27,32 +27,56 @@ typedef enum {
 } multi_sensor_mode_t;
 
 
-#define SENSOR_ENCODE_TYPE_BITS 4
 #define SENSOR_ENCODE_SENSOR_ID_BITS 3
+#define SENSOR_ENCODE_TYPE_BITS 4
 #define SENSOR_ENCODE_VALUE_ID_BITS 4
 #define SENSOR_ENCODE_SENSOR_TYPE_MASK ((0x1 << SENSOR_ENCODE_TYPE_BITS)-1)
 #define SENSOR_ENCODE_VALUE_ID_MASK ((0x1 << SENSOR_ENCODE_VALUE_ID_BITS)-1)
 #define ENCODE_SENSOR_TYPE_IDS_BITS (SENSOR_ENCODE_TYPE_BITS+SENSOR_ENCODE_SENSOR_ID_BITS+SENSOR_ENCODE_VALUE_ID_BITS)
-/*
-* Macro to encode sensor type and global sensor id in a integer whose size 
-* is defined by SENSOR_ENCODE_TYPE_BITS and SENSOR_ENCODE_ID_BITS.
-* This allows for up to SENSOR_ENCODE_ID_BITS^2  different sensor IDs and
-* SENSOR_ENCODE_TYPE_BITS different types.
+
+/**
+* @brief Macro to encode sensor id, type and value id in a integer whose size 
+* is defined by SENSOR_ENCODE_SENSOR_ID_BITS, SENSOR_ENCODE_TYPE_BITS and SENSOR_ENCODE_VALUE_ID_BITS.
+* The 'Sensor ID' is tha global id for the sensor, while the 'Value ID' identifies a single contact/value of
+* a sensor, whic hit can have multiple of. 
 * Sizes can be adjusted to fit requirements
-* -----------------------------------------------------------
-* |   Sensor Type (X bits)     |   Sensor Number (X bits)   |
-* |---------------------------------------------------------|
+* -------------------------------------------------------------------------------
+* |   Sensor ID (X bits)     |   Sensor Type (X bits)   |   Value ID (X bits)   |
+* -------------------------------------------------------------------------------
 */
 #define ENCODE_SENSOR_TYPE_IDS(sensor_id, type, value_id) (( (sensor_id) << SENSOR_ENCODE_TYPE_BITS | (type) ) << SENSOR_ENCODE_VALUE_ID_BITS | (value_id))
 
-
+/**
+ * @brief Macros to decode the sensor id, type or value id froma given integer.
+ * 
+ */
 #define DECODE_SENSOR_ID(type_id_value) (type_id_value >> (SENSOR_ENCODE_TYPE_BITS +SENSOR_ENCODE_VALUE_ID_BITS))
 #define DECODE_SENSOR_TYPE(type_id_value) ((type_id_value >> SENSOR_ENCODE_VALUE_ID_BITS) & SENSOR_ENCODE_SENSOR_TYPE_MASK)
 #define DECODE_VALUE_ID(type_id_value) (type_id_value & SENSOR_ENCODE_VALUE_ID_MASK)
 
 
 
-// Select uint type based on SENSOR_ENCODE_TYPE_BITS
+
+/**
+ * @brief Select the correct size and define uint type 'sensor_id_t' based onSENSOR_ENCODE_SENSOR_ID_BITS 
+ * 
+ */
+#if SENSOR_ENCODE_SENSOR_ID_BITS <= 8
+    typedef uint8_t sensor_id_t;
+#elif SENSOR_ENCODE_SENSOR_ID_BITS <= 16
+    typedef uint16_t sensor_id_t;
+#elif SENSOR_ENCODE_SENSOR_ID_BITS <= 32
+   typedef uint32_t sensor_id_t;
+#elif SENSOR_ENCODE_SENSOR_ID_BITS <= 64
+    typedef uint64_t sensor_id_t;
+#else
+    #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
+#endif
+
+/**
+ * @brief Select the correct size and define uint type 'sensor_type_t' based on SENSOR_ENCODE_TYPE_BITS 
+ * 
+ */
 #if SENSOR_ENCODE_TYPE_BITS <= 8
     typedef uint8_t sensor_type_t;
 #elif SENSOR_ENCODE_TYPE_BITS <= 16
@@ -60,24 +84,26 @@ typedef enum {
 #elif SENSOR_ENCODE_TYPE_BITS <= 32
    typedef uint32_t sensor_type_t;
 #elif SENSOR_ENCODE_TYPE_BITS <= 64
-    #define SELECTED_UINT_TYPE uint64_t
     typedef uint64_t sensor_type_t;
 #else
     #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
 #endif
 
-// Select uint type based on SENSOR_ENCODE_ID_BITS
-#if SENSOR_ENCODE_ID_BITS <= 8
-    typedef uint8_t sensor_id_t;
-#elif SENSOR_ENCODE_ID_BITS <= 16
-    typedef uint16_t sensor_id_t;
-#elif SENSOR_ENCODE_ID_BITS <= 32
-   typedef uint32_t sensor_id_t;
-#elif SENSOR_ENCODE_ID_BITS <= 64
-    #define SELECTED_UINT_TYPE uint64_t
-    typedef uint64_t sensor_id_t;
+
+/**
+ * @brief Select the correct size and define uint type 'value_id_t' based on SENSOR_ENCODE_VALUE_ID_BITS 
+ * 
+ */
+#if SENSOR_ENCODE_VALUE_ID_BITS <= 8
+    typedef uint8_t value_id_t;
+#elif SENSOR_ENCODE_VALUE_ID_BITS <= 16
+    typedef uint16_t value_id_t;
+#elif SENSOR_ENCODE_VALUE_ID_BITS <= 32
+   typedef uint32_t value_id_t;
+#elif SENSOR_ENCODE_VALUE_ID_BITS <= 64
+    typedef uint64_t value_id_t;
 #else
-    #error "SENSOR_ENCODE_ID_BITS exceeds supported maximum."
+    #error "SENSOR_ENCODE_VALUE_ID_BITS exceeds supported maximum."
 #endif
 
 
