@@ -16,6 +16,7 @@
 #include "od.h"
 #include "msg.h"
 #include "thread.h"
+#include "mutex.h"
 
 
 
@@ -30,6 +31,13 @@ static char _rx_thread_stack[THREAD_STACKSIZE_DEFAULT];
 
 /* Message queue for reception thread] */
 static msg_t _rx_msg_queue[QUEUE_SIZE];
+
+
+static mutex_t _lorawan_tx_mutex = MUTEX_INIT;
+
+
+bool lorawan_connected = false;
+
 
 /**
  * @brief   Find the LoRaWAN network interface in the registry.
@@ -102,6 +110,7 @@ static void _join_lorawan_network(const netif_t *netif)
                 /* Disable uplink confirmation requests */
                 status = NETOPT_DISABLE;
                 netif_set_opt(netif, NETOPT_ACK_REQ, 0, &status, sizeof(status));
+                lorawan_connected = true;
                 return;
             }
         }
@@ -178,6 +187,12 @@ int init_lorawan_stack(void){
 
 int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
 {
+
+    if(!lorawan_connected){
+        puts("[INFO] No LoRaWan connection: can't send data!");
+        return -1;
+    }
+
     assert(lorwan_netif != NULL);
     assert(cbor_buf != NULL);
 
@@ -187,11 +202,7 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     gnrc_netif_hdr_t *netif_header;
     uint8_t address = 1;
     msg_t msg;
-    // uint8_t data[2];
-
-    // /* [TASK 2.3] implement function to send data via lorawan */
-    // data[0] = temperature->val[0] >> 8; // High byte
-    // data[1] = temperature->val[0] & 0xFF; // Low byte
+    
 
     packet = gnrc_pktbuf_add(NULL, cbor_buf, buf_size, GNRC_NETTYPE_UNDEF);
     if (packet == NULL) {
@@ -216,10 +227,13 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     netif_header = (gnrc_netif_hdr_t *)header->data;
     netif_header->flags = 0x00;
 
+    mutex_lock(&_lorawan_tx_mutex);
+
     result = gnrc_netif_send(container_of(lorwan_netif, gnrc_netif_t, netif), packet);
     if (result < 1) {
         printf("error: unable to send\n");
         gnrc_pktbuf_release(packet);
+        mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
 
@@ -227,12 +241,16 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     msg_receive(&msg);
     if (msg.type != GNRC_NETERR_MSG_TYPE) {
         printf("error: unexpected message type %" PRIu16 "\n", msg.type);
+        mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
     if (msg.content.value != GNRC_NETERR_SUCCESS) {
         printf("error: unable to send, error: (%" PRIu32 ")\n", msg.content.value);
+        mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
+
+    
 
     return 0;
 }
