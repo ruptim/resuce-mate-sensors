@@ -1,4 +1,5 @@
 #include "messages.h"
+#include "cbor_encoding.h"
 #include "lora_networking.h"
 #include "cbor.h"
 
@@ -15,6 +16,17 @@ static uint16_t cbor_buf_size = 0;
 static uint8_t *cbor_buf;
 
 static int seq_num = 0;
+
+
+/**
+ * @brief Calculate required size to encode a given unsigned integer with CBOR.  
+ * 
+ * @param v        Value to get the required size for.
+ * @return size_t  The required size.
+ */
+size_t cbor_size_of(unsigned long v);
+
+
 
 int encode_data(uint8_t *buf,
                 size_t buf_size,
@@ -82,7 +94,7 @@ int encode_data(uint8_t *buf,
 
     /* create key 'g' gate state */
     ret |= cbor_encode_text_stringz(&map_encoder, "g"); /* 1 byte */
-    ret |= cbor_encode_boolean(&map_encoder, gate_state.state);
+    ret |= cbor_encode_boolean(&map_encoder, gate_state.gate_closed);
 
     /* create key 's' sequence number */
     ret |= cbor_encode_text_stringz(&map_encoder, "s"); /* 1 byte */
@@ -94,8 +106,10 @@ int encode_data(uint8_t *buf,
 
     ret |= cbor_encoder_close_container(&encoder, &map_encoder);
 
+    
+
     if (ret != 0) {
-        printf("Failed to encode data: %s \n", cbor_error_string(ret));
+        printf("Failed to encode data: %s, Additional bytes needed: %d \n", cbor_error_string(ret),cbor_encoder_get_extra_bytes_needed(&encoder));
         return -1;
     }
     return 0;
@@ -123,24 +137,29 @@ size_t cbor_size_of(unsigned long v)
 
 void send_data(const gate_state_t state, const uint32_t timestamp)
 {
-    // (void)cbor_buf;
-    // (void)buf_size;
     uint8_t identifier_sizes = 0;
     uint8_t counter_sizes = 0;
     uint8_t value_sizes = 0;
+
+
+    /* compute sizes needed for types, event counters and values */
     for (int i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         identifier_sizes += cbor_size_of(ENCODE_SENSOR_TYPE_IDS(state.sensor_value_states[i].sensor_id,state.sensor_value_states[i].type, state.sensor_value_states[i].value_id));
         counter_sizes += cbor_size_of(state.sensor_value_states[i].event_counter);
         value_sizes += cbor_size_of(state.sensor_value_states[i].value);
     }
 
+    /* compute required cbor buffer size and allocate it. */
     cbor_buf_size = COMPUTE_CBOR_BUFFER_SIZE(cbor_size_of(SENSOR_CONFIG_LOCATION_POLDER), cbor_size_of(SENSOR_CONFIG_LOCATION_GATE), identifier_sizes, counter_sizes, value_sizes, cbor_size_of(seq_num), cbor_size_of(timestamp));
-    printf("CBOR BUFF SIZE: %u\n", cbor_buf_size);
-    cbor_buf = malloc((cbor_buf_size * sizeof(uint8_t)));
+    cbor_buf =  malloc((cbor_buf_size * sizeof(uint8_t)));
+
 
     encode_data(cbor_buf, cbor_buf_size, state, seq_num, timestamp);
 
-    // send_lorawan_packet(cbor_buf, CBOR_BUF_SIZE);
+    
+    send_lorawan_packet(cbor_buf, cbor_buf_size);
+
+
     for (size_t i = 0; i < cbor_buf_size; i++) {
         printf("%02X", cbor_buf[i]);
     }
