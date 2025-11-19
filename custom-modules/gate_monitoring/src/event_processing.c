@@ -226,7 +226,7 @@ static int eval_equal_ordered_mode(void)
         }
         gate_state.sensor_value_states[i].event_counter = 0;
     }
-    return state;
+    return state & verify_order();
 }
 
 static int eval_majority_ordered_mode(void)
@@ -246,7 +246,7 @@ static int eval_majority_ordered_mode(void)
     }
 
     /* are the majority of values in their "activated" state? */
-    return state >= majority_threshold;
+    return (state >= majority_threshold) & verify_order();
 }
 
 void *evaluate_gate_state(void *arg)
