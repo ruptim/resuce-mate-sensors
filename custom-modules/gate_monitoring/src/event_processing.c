@@ -8,6 +8,11 @@
 #include "ztimer.h"
 #include <stdio.h>
 
+// - debug output
+#define ENABLE_DEBUG 1
+#include "debug.h"
+
+
 #define MAX_EVENTS_FOR_SENSOR_FAULT 200
 
 /* ------------ variable declarations ---------------- */
@@ -116,13 +121,13 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         sensor_event_counter++;
 
         if (gate_state.sensor_value_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
-            printf("Sensor %d reached maximum events. Possible fault or tampering.\n", value_id);
+            printf("[INFO] Sensor value with id %d reached maximum events. Possible fault or tampering.\n", value_id);
             // TODO report after timer expired
             gate_state.sensor_value_states[value_id].is_masked = true;
         }
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
-        printf("Sensor %d (%s): %d, %lu\n", sensor_id,
+        DEBUG("Sensor %d (%s): %d, %lu\n", sensor_id,
                sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
     }
 
@@ -258,11 +263,11 @@ void *evaluate_gate_state(void *arg)
 
     snapshot_current_gate_state();
 
-    printf("----\n");
+    DEBUG("----\n");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        printf("%ld (%d), ", (long unsigned int)gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter);
+        DEBUG("%ld (%d), ", (long unsigned int)gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter);
     }
-    printf("\n");
+    DEBUG("\n");
 
     int final_state = GATE_OPEN;
 
@@ -279,7 +284,7 @@ void *evaluate_gate_state(void *arg)
 
     mutex_unlock(&gate_state_mutex);
 
-    printf("Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
+    printf("[INFO] Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
 
     /* the next step is to verfiy the new gate state. */
     verify_gate_state(final_state);
