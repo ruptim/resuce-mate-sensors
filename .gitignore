@@ -56,5 +56,8 @@ bin/
 .vscode/
 .zed/
 .env
+compile_commands.json
+
+*cppcheck*
 
 hardware/
