@@ -33,6 +33,7 @@ typedef struct {
     sensor_value_state_t sensor_value_states[NUM_UNIQUE_SENSOR_VALUES];
     multi_sensor_mode_t sensor_mode;
     bool sensor_triggered_states[NUM_UNIQUE_SENSOR_VALUES];
+    value_id_t latest_value_id;
     uint8_t activated_sensor_value_count;
 
 } gate_state_t;

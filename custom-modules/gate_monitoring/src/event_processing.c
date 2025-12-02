@@ -118,6 +118,7 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         gate_state.sensor_value_states[value_id].latest_arrive_time = time;
         gate_state.sensor_value_states[value_id].value = value;
         gate_state.sensor_value_states[value_id].event_counter += 1;
+        gate_state.latest_value_id = value_id;
         sensor_event_counter++;
 
         if (gate_state.sensor_value_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
@@ -128,7 +129,7 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
         DEBUG("Sensor %d (%s): %d, %lu\n", sensor_id,
-               sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
+              sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
     }
 
     mutex_unlock(&gate_state_mutex);
@@ -203,16 +204,46 @@ bool compare_reed_sensor_value_state(sensor_value_state_t sensor, uint8_t comp_s
 
 static int verify_order(void)
 {
-    //TODO: verifiy order for both phases (opening and closing)
+    /* determine phase */
+    bool closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
+
+        //TODO: verifiy order for both phases (opening and closing)
     int order_valid = 1;
-    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        if (i > 0 ? (gate_state.sensor_value_states[i].latest_arrive_time > gate_state.sensor_value_states[i - 1].latest_arrive_time) : true) {
-            order_valid &= 1;
-        }
-        else {
-            order_valid = 0;
+
+    if (closing_phase) {
+        /* verify closing phase -> was sensor n activated after n-1 | skip first value*/
+        size_t i = 1;
+        while (i < NUM_UNIQUE_SENSOR_VALUES) {
+            bool same_sensor = gate_state.sensor_value_states[i].sensor_id == gate_state.sensor_value_states[i - 1].sensor_id;
+            
+            /* when NC and NO pins are defined for a sensor, the index of the NO values is +1 to the NC value. */
+            if (gate_state.sensor_value_states[i].latest_arrive_time > gate_state.sensor_value_states[i - 1].latest_arrive_time) {
+                order_valid &= 1;
+            }else{
+                order_valid = 0;
+            }
+
+            if (same_sensor){
+                i+= 2;
+            }else{
+                i++;
+            }
+
+          
         }
     }
+    else {
+        /* verify opening phase -> was sensor n activated after n+1 */
+        for (size_t i = NUM_UNIQUE_SENSOR_VALUES - 1; i > 0; i++) {
+            if (i < (NUM_UNIQUE_SENSOR_VALUES - 1) ? (gate_state.sensor_value_states[i].latest_arrive_time > gate_state.sensor_value_states[i + 1].latest_arrive_time) : true) {
+                order_valid &= 1;
+            }
+            else {
+                order_valid = 0;
+            }
+        }
+    }
+    printf("Phase: %s, Order %s\n", closing_phase? "Closing": "Opening", order_valid == 1? "valid": "invalid");
     return order_valid;
 }
 

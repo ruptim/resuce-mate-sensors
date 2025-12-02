@@ -14,7 +14,9 @@
 gate_state_t gate_state;
 
 /*  A snapshot of the current gate state. It is used for evaluating and sending the state, without it being changed by new events. */
-gate_state_t gate_state_snapshot;
+static gate_state_t gate_state_snapshot;
+
+static ztimer_now_t gate_state_snapshot_ts; 
 
 /* Flag used to indicate intitialization phase, when there is no 'groundtruth'state to compare against. */
 bool init_phase;
@@ -25,7 +27,11 @@ bool init_phase;
  *        What a inconsisten state is, depends on the kind of sensor.
  * 
  */
-void verify_sensors(void);
+static void verify_sensors(void);
+
+static bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state);
+
+
 
 
 void init_gate_state(void)
@@ -74,13 +80,13 @@ void verify_gate_state(bool new_gate_state_value)
     verify_sensors();
 
 
-    ztimer_acquire(ZTIMER_USEC);
-    ztimer_now_t timestamp = ztimer_now(ZTIMER_USEC);
-    ztimer_release(ZTIMER_USEC);
+    ztimer_acquire(ZTIMER_MSEC);
+    gate_state_snapshot_ts = ztimer_now(ZTIMER_MSEC);
+    ztimer_release(ZTIMER_MSEC);
 
-    send_data(gate_state_snapshot, timestamp);
+    send_data(gate_state_snapshot, gate_state_snapshot_ts);
 }
-bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state)
+static bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state)
 {
     (void)nc_state;
     (void)no_state;
@@ -88,7 +94,7 @@ bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_s
     return nc_state.value == no_state.value;
 }
 
-void verify_sensors(void)
+static void verify_sensors(void)
 {
     bool sensor_fault[NUM_SENSORS] = {};
 
