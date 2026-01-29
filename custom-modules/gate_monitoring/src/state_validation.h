@@ -5,8 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define GATE_OPEN   0
-#define GATE_CLOSED 1
+#define GATE_OPEN   false
+#define GATE_CLOSED true
 
 
 typedef uint16_t event_ticket_t;

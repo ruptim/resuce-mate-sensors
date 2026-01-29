@@ -279,13 +279,13 @@ static int eval_equal_ordered_mode(void)
 
 static int eval_majority_ordered_mode(void)
 {
-    bool state = GATE_OPEN;
+    int state_counter = 0;
     /* check how many value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         /* a masked sensor is treated as not activated */
         if (!gate_state.sensor_value_states[i].is_masked ||
             compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
-            state++;
+            state_counter++;
             gate_state.sensor_triggered_states[i] = true;
         }
         else if (gate_state.sensor_triggered_states[i]) {
@@ -296,7 +296,7 @@ static int eval_majority_ordered_mode(void)
     }
 
     /* are the majority of values in their "activated" state? */
-    return (state >= majority_threshold) & verify_ticket_order();
+    return (state_counter >= majority_threshold) & verify_ticket_order();
 }
 
 void *evaluate_gate_state(void *arg)
