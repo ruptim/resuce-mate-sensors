@@ -131,7 +131,7 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         }
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
-        DEBUG("Sensor %d (%s): %d, %d\n", sensor_id,
+        DEBUG("[DEBG] Sensor %d (%s): %d, %d\n", sensor_id,
               sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, ticket);
     }
 
@@ -308,7 +308,7 @@ void *evaluate_gate_state(void *arg)
 
     snapshot_current_gate_state();
 
-    DEBUG("----\n");
+    DEBUG("[DEBG] ----\n[DEBG] State (triggers): ");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         DEBUG("%ld (%d), ", (long unsigned int)gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter);
     }

@@ -122,6 +122,7 @@ static void verify_sensors(void)
     bool sensor_fault[NUM_SENSORS] = {};
 
     size_t i = 0;
+    DEBUG("[DEBG] Faults? ");
     while (i < NUM_UNIQUE_SENSOR_VALUES) {
 
         sensor_value_state_t cur_sensor_val = gate_state.sensor_value_states[i];
