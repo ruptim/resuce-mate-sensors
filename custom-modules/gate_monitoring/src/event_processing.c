@@ -6,12 +6,12 @@
 #include "mutex.h"
 
 #include "ztimer.h"
+#include <stdint.h>
 #include <stdio.h>
 
 // - debug output
 #define ENABLE_DEBUG 1
 #include "debug.h"
-
 
 #define MAX_EVENTS_FOR_SENSOR_FAULT 200
 
@@ -69,12 +69,14 @@ static bool compare_reed_sensor_value_state(sensor_value_state_t sensor_value, u
 static void *evaluate_gate_state(void *arg);
 
 /**
- * @brief Verfiy the order in which the sensor events have arrived in.
+ * @brief Verfiy the order in which 'valid' sensor events have arrived in based on their tickets.  
+ *        Valid are events of sensors that are not masked, and with tickets > than the latest snapshot ticket.
+ *        It's not about verifing wether all sensor have the same value. 
  * 
  * @retval 1 the order is valid.
  * @retval 0 the order is invalid .
  */
-static int verify_order(void);
+static bool verify_ticket_order(void);
 
 /**
  * @brief Evalaute the multi_sensor_mode_t 'MAJORITY_ORDERED' requiring a majority
@@ -106,16 +108,17 @@ void temporal_confirm_timer_callback(void *args)
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, int value)
 {
-    ztimer_acquire(ZTIMER_USEC);
-    ztimer_now_t time = ztimer_now(ZTIMER_USEC);
-    ztimer_release(ZTIMER_USEC);
+    // ztimer_acquire(ZTIMER_USEC);
+    // ztimer_now_t time = ztimer_now(ZTIMER_USEC);
+    // ztimer_release(ZTIMER_USEC);
 
     mutex_lock(&gate_state_mutex);
 
     if (!gate_state.sensor_value_states[value_id].is_masked) {
+        event_ticket_t ticket = get_new_event_ticket();
         // gate_state.sensor_value_states[sensor_id].id = sensor_id;
         // gate_state.sensor_value_states[sensor_id].type = sensor_type;
-        gate_state.sensor_value_states[value_id].latest_arrive_time = time;
+        gate_state.sensor_value_states[value_id].latest_arrive_ticket = ticket;
         gate_state.sensor_value_states[value_id].value = value;
         gate_state.sensor_value_states[value_id].event_counter += 1;
         gate_state.latest_value_id = value_id;
@@ -128,8 +131,8 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         }
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
 
-        DEBUG("Sensor %d (%s): %d, %lu\n", sensor_id,
-              sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, time);
+        DEBUG("Sensor %d (%s): %d, %d\n", sensor_id,
+              sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, ticket);
     }
 
     mutex_unlock(&gate_state_mutex);
@@ -202,57 +205,66 @@ bool compare_reed_sensor_value_state(sensor_value_state_t sensor, uint8_t comp_s
     }
 }
 
-static int verify_order(void)
+static bool verify_ticket_order(void)
 {
-    /* determine phase */
     bool closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
+    event_ticket_t last_state_ticket = get_snapshot_event_ticket();
+    bool order_valid = true;
 
-        //TODO: verifiy order for both phases (opening and closing)
-    int order_valid = 1;
+    /* iteration parameters based on phase */
+    int8_t start_idx = closing_phase ? 0 : (NUM_UNIQUE_SENSOR_VALUES - 1);
+    int8_t end_idx = closing_phase ? NUM_UNIQUE_SENSOR_VALUES : -1;
+    int8_t step = closing_phase ? 1 : -1;
 
-    if (closing_phase) {
-        /* verify closing phase -> was sensor n activated after n-1 | skip first value*/
-        size_t i = 1;
-        while (i < NUM_UNIQUE_SENSOR_VALUES) {
-            bool same_sensor = gate_state.sensor_value_states[i].sensor_id == gate_state.sensor_value_states[i - 1].sensor_id;
-            
-            /* when NC and NO pins are defined for a sensor, the index of the NO values is +1 to the NC value. */
-            if (gate_state.sensor_value_states[i].latest_arrive_time > gate_state.sensor_value_states[i - 1].latest_arrive_time) {
-                order_valid &= 1;
-            }else{
-                order_valid = 0;
-            }
+    int8_t i = start_idx;
+    int8_t prev_valid_i = -1;
+    bool first_not_masked_found = false;
 
-            if (same_sensor){
-                i+= 2;
-            }else{
-                i++;
-            }
-
-          
+    while (i != end_idx) {
+        // 1. Skip masked sensors
+        if (gate_state.sensor_value_states[i].is_masked) {
+            i += step;
+            continue;
         }
-    }
-    else {
-        /* verify opening phase -> was sensor n activated after n+1 */
-        for (size_t i = NUM_UNIQUE_SENSOR_VALUES - 1; i > 0; i++) {
-            if (i < (NUM_UNIQUE_SENSOR_VALUES - 1) ? (gate_state.sensor_value_states[i].latest_arrive_time > gate_state.sensor_value_states[i + 1].latest_arrive_time) : true) {
-                order_valid &= 1;
-            }
-            else {
-                order_valid = 0;
-            }
+
+        /* check if the ticket is newer than the latest snapshot. Only 'current' tickets are considered. */
+        if (gate_state.sensor_value_states[i].latest_arrive_ticket <= last_state_ticket) {
+            i += step;
+            continue;
         }
+
+        /*  the first 'valid' (triggered & not masked) sensor is found, set flag and save as prev_valid_i  */
+        if (!first_not_masked_found) {
+            first_not_masked_found = true;
+            prev_valid_i = i;
+            i += step;
+            continue;
+        }
+
+        /*  compare tickets of current sensor (i) with the previous valid sensor (prev_valid_i) */
+        if (gate_state.sensor_value_states[i].latest_arrive_ticket > gate_state.sensor_value_states[prev_valid_i].latest_arrive_ticket) {
+            order_valid &= true;
+        }
+        else {
+            order_valid = false;
+            break;
+        }
+
+        prev_valid_i = i;
+        i += step;
     }
-    printf("Phase: %s, Order %s\n", closing_phase? "Closing": "Opening", order_valid == 1? "valid": "invalid");
+
     return order_valid;
 }
 
 static int eval_equal_ordered_mode(void)
 {
-    int state = GATE_CLOSED;
+    bool state = GATE_CLOSED;
     /* check if all value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        if (compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
+        /* a masked sensor is treated as not activated */
+        if (!gate_state.sensor_value_states[i].is_masked &&
+            compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
             state &= GATE_CLOSED;
             gate_state.sensor_triggered_states[i] = true;
         }
@@ -262,15 +274,17 @@ static int eval_equal_ordered_mode(void)
         }
         gate_state.sensor_value_states[i].event_counter = 0;
     }
-    return state & verify_order();
+    return state & verify_ticket_order();
 }
 
 static int eval_majority_ordered_mode(void)
 {
-    int state = 0;
+    bool state = GATE_OPEN;
     /* check how many value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        if (compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
+        /* a masked sensor is treated as not activated */
+        if (!gate_state.sensor_value_states[i].is_masked ||
+            compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
             state++;
             gate_state.sensor_triggered_states[i] = true;
         }
@@ -282,7 +296,7 @@ static int eval_majority_ordered_mode(void)
     }
 
     /* are the majority of values in their "activated" state? */
-    return (state >= majority_threshold) & verify_order();
+    return (state >= majority_threshold) & verify_ticket_order();
 }
 
 void *evaluate_gate_state(void *arg)
@@ -300,7 +314,7 @@ void *evaluate_gate_state(void *arg)
     }
     DEBUG("\n");
 
-    int final_state = GATE_OPEN;
+    bool final_state = GATE_OPEN;
 
     /* sensor check for configuration of multiple equivalent (ordered) reed sensors */
     switch (gate_state.sensor_mode) {
