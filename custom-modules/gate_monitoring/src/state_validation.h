@@ -9,6 +9,10 @@
 #define GATE_CLOSED 1
 
 
+typedef uint16_t event_ticket_t;
+
+
+
 /**
  * @brief An abstraction type for a sensors value. 
  * 
@@ -19,7 +23,7 @@ typedef struct {
     value_id_t value_id;
     uint32_t value; 
     uint8_t event_counter;
-    ztimer_now_t latest_arrive_time;
+    event_ticket_t latest_arrive_ticket;
     bool is_masked;
 } sensor_value_state_t;
 
@@ -41,6 +45,13 @@ typedef struct {
 extern gate_state_t gate_state;
 
 /**
+ * @brief Get a new event ticket.  
+ * 
+ * @return event_ticket_t 
+ */
+event_ticket_t get_new_event_ticket(void);
+
+/**
  * @brief Initialize the gate state struct and current sensor values
  *        by triggering the reading of all sensors. 
  * 
@@ -54,9 +65,18 @@ void init_gate_state(void);
 void snapshot_current_gate_state(void);
 
 /**
+ * @brief Get the event ticket of the last snapshot.
+ * 
+ * @return event_ticket_t 
+ */
+event_ticket_t get_snapshot_event_ticket(void);
+
+/**
  * @brief Verify the newly determined gate state against the current one and other verification mechanisms.
  *        If the state is valid, is is set as the new state and an update is send to the uplink.  
  *
  * @param new_gate_state_value The new gate state to verify. 
  */
 void verify_gate_state(bool new_gate_state_value);
+
+

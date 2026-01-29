@@ -1,7 +1,11 @@
 #include "state_validation.h"
+
 #include "messages.h"
 #include "sensor_config.h"
 #include "sensors.h"
+
+
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,6 +14,8 @@
 #include "debug.h"
 
 
+static event_ticket_t event_ticket_counter = 0;
+
 /* the current gate state. */
 gate_state_t gate_state;
 
@@ -17,6 +23,8 @@ gate_state_t gate_state;
 static gate_state_t gate_state_snapshot;
 
 static ztimer_now_t gate_state_snapshot_ts; 
+
+static event_ticket_t gate_state_snapshot_ticket;
 
 /* Flag used to indicate intitialization phase, when there is no 'groundtruth'state to compare against. */
 bool init_phase;
@@ -32,10 +40,20 @@ static void verify_sensors(void);
 static bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state);
 
 
+event_ticket_t get_new_event_ticket(void){
+    event_ticket_counter++;
+    return event_ticket_counter;
+}
+
+
+event_ticket_t get_snapshot_event_ticket(void){
+    return gate_state_snapshot_ticket;
+}
 
 
 void init_gate_state(void)
 {
+
     init_phase = true;
     gate_state.sensor_mode = ACTIVE_MULTI_SENSOR_MODE;
     gate_state.gate_closed = GATE_OPEN;
@@ -49,6 +67,8 @@ void init_gate_state(void)
         gate_state.sensor_value_states[i].type = sensor_type;
         gate_state.sensor_value_states[i].value_id = value_id;
 
+        gate_state.sensor_value_states[i].latest_arrive_ticket = 0;
+
         msg_send(&alarm_cb_args[i].msg, alarm_cb_args[i].pid);
     }
 }
@@ -56,6 +76,8 @@ void init_gate_state(void)
 void snapshot_current_gate_state(void)
 {
     gate_state_snapshot = gate_state;
+    gate_state_snapshot_ticket = event_ticket_counter;
+
 }
 
 void verify_gate_state(bool new_gate_state_value)
@@ -65,6 +87,7 @@ void verify_gate_state(bool new_gate_state_value)
         init_phase = false;
         gate_state.gate_closed = new_gate_state_value;
         /* return for the time being */
+        // event_ticket_counter = 0;
         return;
     }
 
@@ -122,3 +145,5 @@ static void verify_sensors(void)
     }
     puts("");
 }   
+
+
