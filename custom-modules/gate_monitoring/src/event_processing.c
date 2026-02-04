@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "assert.h"
+
 // - debug output
 #define ENABLE_DEBUG 1
 #include "debug.h"
@@ -69,32 +71,32 @@ static bool compare_reed_sensor_value_state(sensor_value_state_t sensor_value, u
 static void *evaluate_gate_state(void *arg);
 
 /**
- * @brief Verfiy the order in which 'valid' sensor events have arrived in based on their tickets.  
+ * @brief Verfiy the sequence in which 'valid' sensor events have arrived in based on their tickets.  
  *        Valid are events of sensors that are not masked, and with tickets > than the latest snapshot ticket.
  *        It's not about verifing wether all sensor have the same value. 
  * 
- * @retval 1 the order is valid.
- * @retval 0 the order is invalid .
+ * @retval 1 the sequence is valid.
+ * @retval 0 the sequence is invalid .
  */
-static bool verify_ticket_order(void);
+static bool verify_ticket_sequence(void);
 
 /**
- * @brief Evalaute the multi_sensor_mode_t 'MAJORITY_ORDERED' requiring a majority
- *        defined by 'majority_threshold' and a valid event order.
+ * @brief Evalaute the multi_sensor_mode_t 'MAJORITY_SEQUENCE' requiring a majority
+ *        defined by 'majority_threshold' and a valid event sequence.
  * 
  * @retval 1 if the gate is determined to be closed. 
  * @retval 0 if the gate is determined to be open. 
  */
-static int eval_majority_ordered_mode(void);
+static int eval_majority_sequence_mode(void);
 
 /**
- * @brief Evalaute the multi_sensor_mode_t 'EQUAL_ORDERED' requiring all values to indicate the 
- *        same gate state and a valid event order.
+ * @brief Evalaute the multi_sensor_mode_t 'EQUAL_SEQUENCE' requiring all values to indicate the 
+ *        same gate state and a valid event sequence.
  * 
  * @retval 1 if the gate is determined to be closed. 
  * @retval 0 if the gate is determined to be open. 
  */
-static int eval_equal_ordered_mode(void);
+static int eval_equal_sequence_mode(void);
 
 /* ------------ function definitions ---------------- */
 
@@ -121,7 +123,9 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         gate_state.sensor_value_states[value_id].latest_arrive_ticket = ticket;
         gate_state.sensor_value_states[value_id].value = value;
         gate_state.sensor_value_states[value_id].event_counter += 1;
+        gate_state.sensor_value_states[value_id].is_out_of_sequence = false;
         gate_state.latest_value_id = value_id;
+
         sensor_event_counter++;
 
         if (gate_state.sensor_value_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
@@ -196,6 +200,7 @@ bool compare_reed_sensor_value_state(sensor_value_state_t sensor, uint8_t comp_s
     bool check_is_activated = (comp_state == REED_SENSOR_ACTIVATED);
 
     if (check_is_activated) {
+        /* if the sensor is activated, the NC pin should be 0. The NO pin should be 1. */
         return (is_nc_pin) ? (sensor.value == REED_SENSOR_PIN_STATE_OPEN) :
                              (sensor.value == REED_SENSOR_PIN_STATE_CLOSED);
     }
@@ -205,11 +210,13 @@ bool compare_reed_sensor_value_state(sensor_value_state_t sensor, uint8_t comp_s
     }
 }
 
-static bool verify_ticket_order(void)
+static bool verify_ticket_sequence(void)
 {
     bool closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
-    event_ticket_t last_state_ticket = get_snapshot_event_ticket();
-    bool order_valid = true;
+    event_ticket_t last_state_ticket = 0;
+    bool got_ticket = false;
+    bool seq_valid = true;
+    
 
     /* iteration parameters based on phase */
     int8_t start_idx = closing_phase ? 0 : (NUM_UNIQUE_SENSOR_VALUES - 1);
@@ -226,9 +233,16 @@ static bool verify_ticket_order(void)
             i += step;
             continue;
         }
+        
+
+        /* get the 'first' ticket of the current phase's seuqence, which is the start of the sequence */
+        if (!got_ticket){
+            last_state_ticket = gate_state.sensor_value_states[i].latest_arrive_ticket;
+            got_ticket = true;
+        }
 
         /* check if the ticket is newer than the latest snapshot. Only 'current' tickets are considered. */
-        if (gate_state.sensor_value_states[i].latest_arrive_ticket <= last_state_ticket) {
+        if (gate_state.sensor_value_states[i].latest_arrive_ticket < last_state_ticket) {
             i += step;
             continue;
         }
@@ -243,23 +257,26 @@ static bool verify_ticket_order(void)
 
         /*  compare tickets of current sensor (i) with the previous valid sensor (prev_valid_i) */
         if (gate_state.sensor_value_states[i].latest_arrive_ticket > gate_state.sensor_value_states[prev_valid_i].latest_arrive_ticket) {
-            order_valid &= true;
+            seq_valid &= true;
         }
         else {
-            order_valid = false;
-            break;
+            seq_valid = false;
+            /* only the previous can be out of sequence, because the other way around would be the valid sequence */
+            gate_state.sensor_value_states[prev_valid_i].is_out_of_sequence = true;
         }
 
         prev_valid_i = i;
         i += step;
     }
 
-    return order_valid;
+    return seq_valid;
 }
 
-static int eval_equal_ordered_mode(void)
+static int eval_equal_sequence_mode(void)
 {
     bool state = GATE_CLOSED;
+
+    verify_ticket_sequence();
     /* check if all value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         /* a masked sensor is treated as not activated */
@@ -274,16 +291,17 @@ static int eval_equal_ordered_mode(void)
         }
         gate_state.sensor_value_states[i].event_counter = 0;
     }
-    return state & verify_ticket_order();
+    return state;
 }
 
-static int eval_majority_ordered_mode(void)
+static int eval_majority_sequence_mode(void)
 {
     int state_counter = 0;
+    verify_ticket_sequence();
     /* check how many value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        /* a masked sensor is treated as not activated */
-        if (!gate_state.sensor_value_states[i].is_masked ||
+        /* a masked or out-of-seq. sensor is treated as not activated */
+        if ((!gate_state.sensor_value_states[i].is_masked && !gate_state.sensor_value_states[i].is_out_of_sequence) &&
             compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
             state_counter++;
             gate_state.sensor_triggered_states[i] = true;
@@ -294,9 +312,9 @@ static int eval_majority_ordered_mode(void)
 
         gate_state.sensor_value_states[i].event_counter = 0;
     }
-
+    DEBUG("[DEBG] MAJ_ORD: %d > %d ?\n", state_counter, majority_threshold);
     /* are the majority of values in their "activated" state? */
-    return (state_counter >= majority_threshold) & verify_ticket_order();
+    return (state_counter >= majority_threshold);
 }
 
 void *evaluate_gate_state(void *arg)
@@ -316,13 +334,13 @@ void *evaluate_gate_state(void *arg)
 
     bool final_state = GATE_OPEN;
 
-    /* sensor check for configuration of multiple equivalent (ordered) reed sensors */
+    /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
     switch (gate_state.sensor_mode) {
-    case EQUAL_ORDERED:
-        final_state = eval_equal_ordered_mode();
+    case EQUAL_SEQUENCE:
+        final_state = eval_equal_sequence_mode();
         break;
-    case MAJORITY_ORDERED:
-        final_state = eval_majority_ordered_mode();
+    case MAJORITY_SEQUENCE:
+        final_state = eval_majority_sequence_mode();
     default:
         break;
     }

@@ -17,11 +17,12 @@
 
 typedef enum {
     EQUAL_PARALLEL = 0b000,    /* equal priority, order doesn't matter */
-    EQUAL_ORDERED = 0b001,     /* equal priority, order matters */
-    WEIGHTED_PARALLEL = 0b010, /* different weights/priorities, order doesn't matter */
-    WEIGHTED_ORDERED = 0b011,  /* different weights/priorities, order matters */
-    MAJORITY_PARALLEL = 0b100, /* different weights/priorities, order doesn't matter */
-    MAJORITY_ORDERED = 0b101,  /* different weights/priorities, order matters */
+    EQUAL_SEQUENCE = 0b001,     /* equal priority, order matters */
+    MAJORITY_PARALLEL = 0b010, /* majority voting, no order verification */
+    MAJORITY_SEQUENCE = 0b011,  /* majority voting, verify order */
+    WEIGHTED_PARALLEL = 0b100, /* different weights/priorities, order doesn't matter */
+    WEIGHTED_SEQUENCE = 0b101,  /* different weights/priorities, order matters */
+    
 
 } multi_sensor_mode_t;
 

@@ -37,10 +37,12 @@ class SensorTypeID(Enum):
 
 
 class MultiSensorModeID(Enum):
-    EQUAL_PARALLEL = 0b00  # equal priority, order doesn't matter
-    EQUAL_ORDERED = 0b01  # equal priority, order matters
-    WEIGHTED_PARALLEL = 0b10  # different weights/priorities, order doesn't matter
-    WEIGHTED_ORDERED = 0b11  # different weights/priorities, order matters
+    EQUAL_PARALLEL = 0b000      # equal priority, order doesn't matter
+    EQUAL_SEQUENCE = 0b001      # equal priority, order matters
+    MAJORITY_PARALLEL = 0b010   # majority voting, no order verification
+    MAJORITY_SEQUENCE = 0b011   # majority voting, verify order
+    WEIGHTED_PARALLEL = 0b100   # different weights/priorities, order doesn't matter 
+    WEIGHTED_SEQUENCE = 0b101   # different weights/priorities, order matters
 
 
 def format_comment_block(lines):
@@ -139,7 +141,7 @@ def main():
 
     # get sensor mode
     cw.add_line(comment="Configuration in which the sensors are to be interpreted.")
-    cw.add_line(f"#define ACTIVE_MULTI_SENSOR_MODE {MultiSensorModeID['EQUAL_ORDERED'].name}")
+    cw.add_line(f"#define ACTIVE_MULTI_SENSOR_MODE {MultiSensorModeID[data['multi_sensor_mode']].name}")
     cw.add_line(ignore_indent=True)
 
     cw.add_line(
@@ -318,7 +320,7 @@ def main():
                     f"    .use_external_pulldown = {external_pulldown()},",
                     f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
                     "\n",
-                    f"if ((ret = reed_sensor_driver_init(&{Subscript(registered_sensors, sensor_id)}.reed_sensor, &{Subscript(registered_sensors_params, sensor_id)}[{i}].reed_sensor_params)) != 0){{",
+                    f"if ((ret = reed_sensor_driver_init(&{Subscript(registered_sensors, sensor_id)}.reed_sensor, &{Subscript(registered_sensors_params, sensor_id)}.reed_sensor_params)) != 0){{",
                     "\treturn ret;",
                     "}",
                     "\n\n",
