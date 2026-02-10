@@ -25,6 +25,7 @@ typedef struct {
     uint8_t event_counter;
     event_ticket_t latest_arrive_ticket;
     bool is_masked;
+    bool is_out_of_sequence;
 } sensor_value_state_t;
 
 /**
