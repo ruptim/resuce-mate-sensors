@@ -35,10 +35,10 @@ extern C {
 #define NUM_SENSORS 3
 
 /* Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors) */
-#define NUM_UNIQUE_SENSOR_VALUES 5
+#define NUM_UNIQUE_SENSOR_VALUES 3
 
 /* Configuration in which the sensors are to be interpreted. */
-#define ACTIVE_MULTI_SENSOR_MODE EQUAL_ORDERED
+#define ACTIVE_MULTI_SENSOR_MODE MAJORITY_SEQUENCE
 
 /* holds all callback arguments for all sensors */
 extern alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
@@ -47,17 +47,15 @@ extern alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 
 #define SENSOR_1_ID 0
 #define SENSOR_1_REED_NC_ID 0
-#define SENSOR_1_REED_NO_ID 1
 
 #define SENSOR_2_ID 1
-#define SENSOR_2_REED_NC_ID 2
-#define SENSOR_2_REED_NO_ID 3
+#define SENSOR_2_REED_NC_ID 1
 
 #define SENSOR_3_ID 2
-#define SENSOR_3_REED_NC_ID 4
+#define SENSOR_3_REED_NC_ID 2
 
 /*  The number of maximum bytes needed for all sensor values. */
-#define SENSORS_MAX_VALUE_BYTES_NEEDED 5
+#define SENSORS_MAX_VALUE_BYTES_NEEDED 3
 
 extern sensor_base_type_t registered_sensors[3];
 extern sensor_base_params_t registered_sensors_params[3];

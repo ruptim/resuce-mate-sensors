@@ -7,11 +7,8 @@
             "port_pin1": [
                 1,
                 9
-            ],
-            "port_pin2": [
-                0,
-                8
             ]
+         
         },
         {
             "name": "polder11/gate13/02",
@@ -19,10 +16,6 @@
             "port_pin1": [
                 0,
                 11
-            ],
-            "port_pin2": [
-                0,
-                12
             ]
         },
         {
@@ -35,5 +28,5 @@
          
         }
     ],
-    "multi_sensor_mode": "EQUAL_SEQUENCE"
+    "multi_sensor_mode": "MAJORITY_SEQUENCE"
 }

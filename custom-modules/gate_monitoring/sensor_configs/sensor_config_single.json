@@ -9,5 +9,5 @@
 
     
   ],
-  "sensor_config": "EQUAL_ORDERED"
+  "sensor_config": "EQUAL_SEQUENCE"
 }
