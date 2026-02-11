@@ -28,5 +28,5 @@
          
         }
     ],
-    "multi_sensor_mode": "EQUAL_SEQUENCE"
+    "multi_sensor_mode": "MAJORITY_SEQUENCE"
 }
