@@ -2,6 +2,7 @@
 
 #include "sensor_config.h"
 
+#include "ztimer.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -24,6 +25,7 @@ typedef struct {
     uint32_t value; 
     uint8_t event_counter;
     event_ticket_t latest_arrive_ticket;
+    ztimer_now_t latest_arrive_time_ms;
     bool is_masked;
     bool is_out_of_sequence;
 } sensor_value_state_t;
@@ -78,6 +80,6 @@ event_ticket_t get_snapshot_event_ticket(void);
  *
  * @param new_gate_state_value The new gate state to verify. 
  */
-void verify_gate_state(bool new_gate_state_value);
+void verify_gate_state(bool new_gate_state_value, bool is_closing_phase);
 
 

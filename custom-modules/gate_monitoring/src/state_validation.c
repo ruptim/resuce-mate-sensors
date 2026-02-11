@@ -4,7 +4,6 @@
 #include "sensor_config.h"
 #include "sensors.h"
 
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +11,6 @@
 // - debug output
 #define ENABLE_DEBUG 1
 #include "debug.h"
-
 
 static event_ticket_t event_ticket_counter = 0;
 
@@ -22,13 +20,12 @@ gate_state_t gate_state;
 /*  A snapshot of the current gate state. It is used for evaluating and sending the state, without it being changed by new events. */
 static gate_state_t gate_state_snapshot;
 
-static ztimer_now_t gate_state_snapshot_ts; 
+static ztimer_now_t gate_state_snapshot_ts;
 
 static event_ticket_t gate_state_snapshot_ticket;
 
 /* Flag used to indicate intitialization phase, when there is no 'groundtruth'state to compare against. */
 bool init_phase;
-
 
 /**
  * @brief Check whether the sensor values are valid or show inconsistencies.
@@ -39,21 +36,19 @@ static void verify_sensors(void);
 
 static bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state);
 
-
-event_ticket_t get_new_event_ticket(void){
+event_ticket_t get_new_event_ticket(void)
+{
     event_ticket_counter++;
     return event_ticket_counter;
 }
 
-
-event_ticket_t get_snapshot_event_ticket(void){
+event_ticket_t get_snapshot_event_ticket(void)
+{
     return gate_state_snapshot_ticket;
 }
 
-
 void init_gate_state(void)
 {
-
     init_phase = true;
     gate_state.sensor_mode = ACTIVE_MULTI_SENSOR_MODE;
     gate_state.gate_closed = GATE_OPEN;
@@ -77,31 +72,53 @@ void snapshot_current_gate_state(void)
 {
     gate_state_snapshot = gate_state;
     gate_state_snapshot_ticket = event_ticket_counter;
-
 }
 
-void verify_gate_state(bool new_gate_state_value)
+void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
 {
+//     bool new_gate_state_value;
+
+//     if (!is_closing_phase && !is_phase_state_valid) {
+//         /* opening phase is invalid -> GATE CLOSED */
+//         new_gate_state_value = GATE_CLOSED;
+//     }
+//     else if (!is_closing_phase && is_phase_state_valid) {
+//         /* opening phase is valid -> GATE OPEN */
+//         new_gate_state_value = GATE_OPEN;
+//     }
+//     else if (is_closing_phase && !is_phase_state_valid) {
+//         /* closing phase is invalid -> GATE OPEN */
+//         new_gate_state_value = GATE_OPEN;
+//     }
+//     else /* closing phase is valid -> GATE OPEN */
+//     {
+//         new_gate_state_value = GATE_CLOSED;
+//     }
+
+
+     
     /* in the init phase there is no current known gate state to check against  */
     if (init_phase) {
         init_phase = false;
-        gate_state.gate_closed = new_gate_state_value;
-        /* return for the time being */
-        // event_ticket_counter = 0;
-        return;
+        new_gate_state_value = GATE_OPEN;
+        // return;
     }
-
     if (gate_state_snapshot.gate_closed == new_gate_state_value) {
         //TODO; handle case when state is the same as before.
-    }else{
+    }
+    else {
         gate_state_snapshot.gate_closed = new_gate_state_value;
     }
 
+    printf("[INFO] Phase is %s. New state: %s\n",is_closing_phase ? "CLOSING" : "OPENING",
+                                            //  is_phase_state_valid ? "valid" : "invalid",
+                                              new_gate_state_value ? "CLOSED" : "OPEN"
+                                            );
 
 
 
+   
     verify_sensors();
-
 
     ztimer_acquire(ZTIMER_MSEC);
     gate_state_snapshot_ts = ztimer_now(ZTIMER_MSEC);
@@ -124,7 +141,6 @@ static void verify_sensors(void)
     size_t i = 0;
     DEBUG("[DEBG] Faults? ");
     while (i < NUM_UNIQUE_SENSOR_VALUES) {
-
         sensor_value_state_t cur_sensor_val = gate_state.sensor_value_states[i];
         switch (cur_sensor_val.type) {
         case SENSOR_TYPE_ID_REED_SWITCH_NC:
@@ -145,6 +161,4 @@ static void verify_sensors(void)
         i++;
     }
     puts("");
-}   
-
-
+}

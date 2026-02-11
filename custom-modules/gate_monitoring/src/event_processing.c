@@ -110,9 +110,9 @@ void temporal_confirm_timer_callback(void *args)
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, int value)
 {
-    // ztimer_acquire(ZTIMER_USEC);
-    // ztimer_now_t time = ztimer_now(ZTIMER_USEC);
-    // ztimer_release(ZTIMER_USEC);
+    ztimer_acquire(ZTIMER_USEC);
+    ztimer_now_t time = ztimer_now(ZTIMER_USEC);
+    ztimer_release(ZTIMER_USEC);
 
     mutex_lock(&gate_state_mutex);
 
@@ -121,6 +121,7 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         // gate_state.sensor_value_states[sensor_id].id = sensor_id;
         // gate_state.sensor_value_states[sensor_id].type = sensor_type;
         gate_state.sensor_value_states[value_id].latest_arrive_ticket = ticket;
+        gate_state.sensor_value_states[value_id].latest_arrive_time_ms = time;        
         gate_state.sensor_value_states[value_id].value = value;
         gate_state.sensor_value_states[value_id].event_counter += 1;
         gate_state.sensor_value_states[value_id].is_out_of_sequence = false;
@@ -326,27 +327,28 @@ void *evaluate_gate_state(void *arg)
     }
     DEBUG("\n");
 
-    bool final_state = GATE_OPEN;
+    bool gate_is_closed = GATE_OPEN;
 
-    bool closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
+    
+    bool is_closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
 
     /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
     switch (gate_state.sensor_mode) {
     case EQUAL_SEQUENCE:
-        final_state = eval_equal_sequence_mode(closing_phase);
+        gate_is_closed = eval_equal_sequence_mode(is_closing_phase);
         break;
     case MAJORITY_SEQUENCE:
-        final_state = eval_majority_sequence_mode(closing_phase);
+        gate_is_closed = eval_majority_sequence_mode(is_closing_phase);
     default:
         break;
     }
 
     mutex_unlock(&gate_state_mutex);
 
-    printf("[INFO] Gate State is: %s\n", final_state == GATE_CLOSED ? "closed" : "open");
+
 
     /* the next step is to verfiy the new gate state. */
-    verify_gate_state(final_state);
+    verify_gate_state(gate_is_closed, is_closing_phase);
 
     return NULL;
 }
