@@ -24,6 +24,8 @@
 #include "thread.h"
 #include "ztimer.h"
 
+#include "periph/gpio.h"
+#include "board.h"
 
 /* Application headers */
 
@@ -42,7 +44,7 @@ int main(void)
 {
     
     ztimer_acquire(ZTIMER_SEC);
-    ztimer_sleep(ZTIMER_SEC, 4);
+    ztimer_sleep(ZTIMER_SEC, 3);
     ztimer_release(ZTIMER_SEC);
 
     puts("Application 'Silenos' starting.");
@@ -52,11 +54,10 @@ int main(void)
 
     start_monitoring_routine();
 
-
+    gpio_toggle(LED1_PIN);
     while (1)
     {
         thread_sleep();
-        // ztimer_sleep(ZTIMER_MSEC, 1000);
     };
     
 
