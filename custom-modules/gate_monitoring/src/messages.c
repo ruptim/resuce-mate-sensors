@@ -11,11 +11,24 @@
 #include <stdint.h>
 #include <stdio.h>
 
-static uint16_t cbor_buf_size = 0;
-// static uint8_t cbor_buf[CBOR_BUFFER_SIZE] = { 0 };
-static uint8_t *cbor_buf;
+static uint8_t cbor_buf[CBOR_BUFFER_SIZE] = { 0 };
+static uint16_t cbor_buf_size = CBOR_BUFFER_SIZE;
+// static uint8_t *cbor_buf;
 
 static int seq_num = 0;
+
+
+/**
+ * @brief Calculate bytes needed for encoding a value in CBOR. RFC 8949.
+ * 
+ * @param buf           cbor buffer for the encoded data
+ * @param buf_size      len of the cbor buffer
+ * @param gate_state    gate state with the data about sensors and gate to encode
+ * @param seq_num       current sequence number
+ * @param seq_num       local timestamp of time of sending 
+ * @return              -1 when failing to encode the data.
+ */
+static int encode_data(uint8_t *buf, size_t buf_size, gate_state_t gate_state, int seq_num, uint32_t timestamp_s);
 
 
 /**
@@ -24,11 +37,11 @@ static int seq_num = 0;
  * @param v        Value to get the required size for.
  * @return size_t  The required size.
  */
-size_t cbor_size_of(unsigned long v);
+static size_t cbor_size_of(unsigned long v);
 
 
 
-int encode_data(uint8_t *buf,
+static int encode_data(uint8_t *buf,
                 size_t buf_size,
                 gate_state_t gate_state,
                 int seq_num,
@@ -92,6 +105,17 @@ int encode_data(uint8_t *buf,
     }
     ret |= cbor_encoder_close_container(&map_encoder, &array_encoder_c);
 
+    /* create key 'k' ticket array */
+    ret |= cbor_encode_text_stringz(&map_encoder, "k"); /* 1 byte */
+    ret |= cbor_encoder_create_array(&map_encoder, &array_encoder_c, NUM_UNIQUE_SENSOR_VALUES);
+
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; ++i) {
+        sensor_value_state_t sensor = gate_state.sensor_value_states[i];
+
+        ret |= cbor_encode_uint(&array_encoder_c, sensor.latest_arrive_ticket);
+    }
+    ret |= cbor_encoder_close_container(&map_encoder, &array_encoder_c);
+
     /* create key 'g' gate state */
     ret |= cbor_encode_text_stringz(&map_encoder, "g"); /* 1 byte */
     ret |= cbor_encode_boolean(&map_encoder, gate_state.gate_closed);
@@ -116,7 +140,7 @@ int encode_data(uint8_t *buf,
 }
 
 
-size_t cbor_size_of(unsigned long v)
+static size_t cbor_size_of(unsigned long v)
 {
     int encoding_byte = 0;
     if (v > 0x18) {
@@ -140,6 +164,7 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
     uint8_t identifier_sizes = 0;
     uint8_t counter_sizes = 0;
     uint8_t value_sizes = 0;
+    uint8_t ticket_sizes = 0;
 
 
     /* compute sizes needed for types, event counters and values */
@@ -147,12 +172,18 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
         identifier_sizes += cbor_size_of(ENCODE_SENSOR_TYPE_IDS(state.sensor_value_states[i].sensor_id,state.sensor_value_states[i].type, state.sensor_value_states[i].value_id));
         counter_sizes += cbor_size_of(state.sensor_value_states[i].event_counter);
         value_sizes += cbor_size_of(state.sensor_value_states[i].value);
+        ticket_sizes += cbor_size_of(state.sensor_value_states[i].value);
     }
 
     /* compute required cbor buffer size and allocate it. */
-    cbor_buf_size = COMPUTE_CBOR_BUFFER_SIZE(cbor_size_of(SENSOR_CONFIG_LOCATION_POLDER), cbor_size_of(SENSOR_CONFIG_LOCATION_GATE), identifier_sizes, counter_sizes, value_sizes, cbor_size_of(seq_num), cbor_size_of(timestamp));
-    cbor_buf =  malloc((cbor_buf_size * sizeof(uint8_t)));
+    size_t cbor_buf_size_needed = COMPUTE_CBOR_BUFFER_SIZE(cbor_size_of(SENSOR_CONFIG_LOCATION_POLDER), cbor_size_of(SENSOR_CONFIG_LOCATION_GATE), identifier_sizes, counter_sizes, value_sizes,ticket_sizes, cbor_size_of(seq_num), cbor_size_of(timestamp));
+    // cbor_buf =  malloc((cbor_buf_size * sizeof(uint8_t)));
 
+    if (cbor_buf_size_needed > cbor_buf_size){
+        //todo: error / allocate new one?
+    }
+
+    
 
     encode_data(cbor_buf, cbor_buf_size, state, seq_num, timestamp);
 
@@ -167,5 +198,5 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
 
     seq_num++;
 
-    free(cbor_buf);
+    // free(cbor_buf);
 }
