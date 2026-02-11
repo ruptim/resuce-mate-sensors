@@ -76,26 +76,6 @@ void snapshot_current_gate_state(void)
 
 void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
 {
-//     bool new_gate_state_value;
-
-//     if (!is_closing_phase && !is_phase_state_valid) {
-//         /* opening phase is invalid -> GATE CLOSED */
-//         new_gate_state_value = GATE_CLOSED;
-//     }
-//     else if (!is_closing_phase && is_phase_state_valid) {
-//         /* opening phase is valid -> GATE OPEN */
-//         new_gate_state_value = GATE_OPEN;
-//     }
-//     else if (is_closing_phase && !is_phase_state_valid) {
-//         /* closing phase is invalid -> GATE OPEN */
-//         new_gate_state_value = GATE_OPEN;
-//     }
-//     else /* closing phase is valid -> GATE OPEN */
-//     {
-//         new_gate_state_value = GATE_CLOSED;
-//     }
-
-
      
     /* in the init phase there is no current known gate state to check against  */
     if (init_phase) {
@@ -111,7 +91,6 @@ void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
     }
 
     printf("[INFO] Phase is %s. New state: %s\n",is_closing_phase ? "CLOSING" : "OPENING",
-                                            //  is_phase_state_valid ? "valid" : "invalid",
                                               new_gate_state_value ? "CLOSED" : "OPEN"
                                             );
 
