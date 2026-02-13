@@ -9,7 +9,6 @@
 #define GATE_OPEN   false
 #define GATE_CLOSED true
 
-
 typedef uint16_t event_ticket_t;
 
 
@@ -41,7 +40,7 @@ typedef struct {
     multi_sensor_mode_t sensor_mode;
     bool sensor_triggered_states[NUM_UNIQUE_SENSOR_VALUES];
     value_id_t latest_value_id;
-    uint8_t activated_sensor_value_count;
+    bool all_sensor_in_same_state;
 
 } gate_state_t;
 
@@ -53,6 +52,14 @@ extern gate_state_t gate_state;
  * @return event_ticket_t 
  */
 event_ticket_t get_new_event_ticket(void);
+
+/**
+ * @brief Reset the event ticket back to its starting value.  
+ * 
+ * @return void 
+ */
+void reset_event_ticket(void);
+
 
 /**
  * @brief Initialize the gate state struct and current sensor values

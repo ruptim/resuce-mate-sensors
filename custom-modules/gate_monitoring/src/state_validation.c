@@ -12,7 +12,9 @@
 #define ENABLE_DEBUG 1
 #include "debug.h"
 
-static event_ticket_t event_ticket_counter = 0;
+
+#define STARTING_TICKET 0
+static event_ticket_t event_ticket_counter = STARTING_TICKET;
 
 /* the current gate state. */
 gate_state_t gate_state;
@@ -40,6 +42,11 @@ event_ticket_t get_new_event_ticket(void)
 {
     event_ticket_counter++;
     return event_ticket_counter;
+}
+
+void reset_event_ticket(void)
+{
+    event_ticket_counter = STARTING_TICKET;
 }
 
 event_ticket_t get_snapshot_event_ticket(void)
