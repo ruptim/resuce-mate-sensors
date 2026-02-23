@@ -1,8 +1,8 @@
 {
-    "location": "polder11/gate13",
+    "location": "polder40/gate14",
     "sensors": [
         {
-            "name": "polder11/gate13/01",
+            "name": "polder40/gate14/01",
             "type": "1",
             "port_pin2": [
                 0,
@@ -10,7 +10,7 @@
             ]
         },
         {
-            "name": "polder11/gate13/02",
+            "name": "polder40/gate14/02",
             "type": "1",
            
             "port_pin2": [
@@ -19,7 +19,7 @@
             ]
         },
         {
-            "name": "polder11/gate13/03",
+            "name": "polder40/gate14/03",
             "type": "1",
             "port_pin2": [
                 0,
