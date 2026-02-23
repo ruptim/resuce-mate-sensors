@@ -8,6 +8,7 @@
 #include <sys/unistd.h>
 #include <errno.h>
 
+#include "debug.h"
 
 static char monitoring_thread_stack[THREAD_STACKSIZE_MAIN];
 
@@ -43,7 +44,7 @@ int initialize_monitoring(bool start_lorawan){
 
 int start_monitoring_routine(void){
 
-    puts("[INFO] Starting monitoring routine!");
+    DEBUG("[INFO] Starting monitoring routine!");
     
     if (thread_wakeup(thread_pid) != 1) {
         puts("[ERROR] Failed to wake up monitoring thread!");

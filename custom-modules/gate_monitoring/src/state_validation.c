@@ -9,7 +9,6 @@
 #include <stdlib.h>
 
 // - debug output
-#define ENABLE_DEBUG 1
 #include "debug.h"
 
 
@@ -97,7 +96,7 @@ void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
         gate_state_snapshot.gate_closed = new_gate_state_value;
     }
 
-    printf("[INFO] Phase is %s. New state: %s\n",is_closing_phase ? "CLOSING" : "OPENING",
+    DEBUG("[INFO] Phase is %s. New state: %s\n",is_closing_phase ? "CLOSING" : "OPENING",
                                               new_gate_state_value ? "CLOSED" : "OPEN"
                                             );
 

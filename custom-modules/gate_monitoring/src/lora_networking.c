@@ -64,7 +64,7 @@ static void _print_received_packet(gnrc_pktsnip_t *pkt);
  * @brief   Routine for packet reception thread.
  * @param   arg  not used.
  */
-void *_rx_thread(void *arg);
+static void *_rx_thread(void *arg);
 
 static netif_t *_find_lorawan_network_interface(void)
 {
@@ -134,7 +134,7 @@ static void _print_received_packet(gnrc_pktsnip_t *pkt)
     gnrc_pktbuf_release(pkt);
 }
 
-void *_rx_thread(void *arg)
+static void *_rx_thread(void *arg)
 {
     (void)arg;
     msg_t msg;

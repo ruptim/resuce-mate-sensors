@@ -12,7 +12,6 @@
 #include "assert.h"
 
 // - debug output
-#define ENABLE_DEBUG 1
 #include "debug.h"
 
 #define MAX_EVENTS_FOR_SENSOR_FAULT 200
@@ -139,7 +138,7 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
         sensor_event_counter++;
 
         if (gate_state.sensor_value_states[value_id].event_counter == MAX_EVENTS_FOR_SENSOR_FAULT) {
-            printf("[INFO] Sensor value with id %d reached maximum events. Possible fault or tampering.\n", value_id);
+            DEBUG("[INFO] Sensor value with id %d reached maximum events. Possible fault or tampering.\n", value_id);
             // TODO report after timer expired
             gate_state.sensor_value_states[value_id].is_masked = true;
         }
@@ -163,7 +162,7 @@ void *await_sensor_events(void *arg)
     /* initialize gate state by triggering all sensors once */
     init_gate_state();
 
-    puts("[INFO] Receiving Events!");
+    DEBUG("[INFO] Receiving Events!");
 
     while (true) {
         msg_t msg;
