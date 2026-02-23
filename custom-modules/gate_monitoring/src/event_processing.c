@@ -12,6 +12,8 @@
 #include "assert.h"
 
 // - debug output
+
+#define ENABLE_DEBUG GATE_MONITORING_ENABLE_DEBUG
 #include "debug.h"
 
 #define MAX_EVENTS_FOR_SENSOR_FAULT 200
@@ -162,7 +164,7 @@ void *await_sensor_events(void *arg)
     /* initialize gate state by triggering all sensors once */
     init_gate_state();
 
-    DEBUG("[INFO] Receiving Events!");
+    DEBUG("[INFO] Receiving Events!\n");
 
     while (true) {
         msg_t msg;
@@ -267,6 +269,7 @@ bool verify_ticket_sequence(bool closing_phase, gate_state_t *cur_gate_state)
         /* 3. save the first 'valid' sensor (triggered & not masked) */
         if (!first_not_masked_found) {
             first_not_masked_found = true;
+            prev_valid_i = i;
             i += step;
             continue;
         }
@@ -362,7 +365,6 @@ void *evaluate_gate_state(void *arg)
     /* lock mutex so the sensor values don't change during evaluation. */
     mutex_lock(&gate_state_mutex);
 
-    snapshot_current_gate_state();
 
     DEBUG("[DEBG] ----\n[DEBG] State (triggers, ticket): ");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
@@ -394,10 +396,17 @@ void *evaluate_gate_state(void *arg)
         reset_sensor_tickets(is_closing_phase);
     }
 
-    mutex_unlock(&gate_state_mutex);
+    /* save snapshot of current gate state for verification and sending   */
+    snapshot_current_gate_state();
+
+
 
     /* the next step is to verfiy the new gate state. */
     verify_gate_state(gate_is_closed, is_closing_phase);
+
+
+    mutex_unlock(&gate_state_mutex);
+
 
     return NULL;
 }

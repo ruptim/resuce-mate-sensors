@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 // - debug output
+#define ENABLE_DEBUG GATE_MONITORING_ENABLE_DEBUG
 #include "debug.h"
 
 
@@ -89,18 +90,18 @@ void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
         new_gate_state_value = GATE_OPEN;
         // return;
     }
-    if (gate_state_snapshot.gate_closed == new_gate_state_value) {
+    if (gate_state.gate_closed == new_gate_state_value) {
         //TODO; handle case when state is the same as before.
     }
     else {
-        gate_state_snapshot.gate_closed = new_gate_state_value;
+        gate_state.gate_closed = new_gate_state_value;
     }
 
     DEBUG("[INFO] Phase is %s. New state: %s\n",is_closing_phase ? "CLOSING" : "OPENING",
                                               new_gate_state_value ? "CLOSED" : "OPEN"
                                             );
 
-
+    // gate_state_snapshot.
 
    
     verify_sensors();
@@ -109,7 +110,7 @@ void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
     gate_state_snapshot_ts = ztimer_now(ZTIMER_MSEC);
     ztimer_release(ZTIMER_MSEC);
 
-    send_data(gate_state_snapshot, gate_state_snapshot_ts);
+    send_data(gate_state, gate_state_snapshot_ts);
 }
 static bool verify_reed_sensor(sensor_value_state_t nc_state, sensor_value_state_t no_state)
 {

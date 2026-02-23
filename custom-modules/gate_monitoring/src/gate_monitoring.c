@@ -8,6 +8,7 @@
 #include <sys/unistd.h>
 #include <errno.h>
 
+#define ENABLE_DEBUG GATE_MONITORING_ENABLE_DEBUG
 #include "debug.h"
 
 static char monitoring_thread_stack[THREAD_STACKSIZE_MAIN];
@@ -44,7 +45,7 @@ int initialize_monitoring(bool start_lorawan){
 
 int start_monitoring_routine(void){
 
-    DEBUG("[INFO] Starting monitoring routine!");
+    DEBUG("[INFO] Starting monitoring routine!\n");
     
     if (thread_wakeup(thread_pid) != 1) {
         puts("[ERROR] Failed to wake up monitoring thread!");

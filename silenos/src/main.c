@@ -33,7 +33,7 @@
 
 
 
-#define ENABLE_DEBUG 0
+// #define ENABLE_DEBUG 1
 #include "debug.h"
 
 #ifndef GATE_MONITORING_USE_LORAWAN

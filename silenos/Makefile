@@ -39,12 +39,9 @@ QUIET ?= 1
 
 
 USEMODULE += gate_monitoring
-# select sensor configuration for gate_monitoring module
-export SENSOR_CONFIG ?= sensor_config_only_no
-# set gate_monitoring module to use lorawan
-CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=true
 
 
+ENABLE_DEBUG = 1
 
 USEMODULE += ztimer_sec
 USEPKG += tinycbor

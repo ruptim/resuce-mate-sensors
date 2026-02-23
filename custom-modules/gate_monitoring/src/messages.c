@@ -6,10 +6,12 @@
 #include "sensors.h"
 #include "state_validation.h"
 #include "stdio.h"
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#define ENABLE_DEBUG GATE_MONITORING_ENABLE_DEBUG
+#include "debug.h"
 
 static uint8_t cbor_buf[CBOR_BUFFER_SIZE] = { 0 };
 static uint16_t cbor_buf_size = CBOR_BUFFER_SIZE;
@@ -194,7 +196,7 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
     for (size_t i = 0; i < cbor_buf_size; i++) {
         printf("%02X", cbor_buf[i]);
     }
-    printf("\n");
+    DEBUG("\n");
 
     seq_num++;
 
