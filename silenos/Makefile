@@ -13,10 +13,6 @@ BINDIRBASE                      ?= $(CURDIR)/bin
 
 
 
-SENSOR_CONFIG ?= default_sensor_config
-
-
-
 # No spaces between the quotes
 CFLAGS += -DCONFIG_LORAMAC_APP_EUI_DEFAULT=\"0000000000000000\"
 CFLAGS += -DCONFIG_LORAMAC_DEV_EUI_DEFAULT=\"${LORAWAN_DEV_EUI}\"
@@ -27,6 +23,7 @@ $(info  LoRaWAN DEV_EUI: ${LORAWAN_DEV_EUI})
 # If no BOARD is found in the environment, use this default:
 # BOARD ?= adafruit-feather-nrf52840-sense
 BOARD ?= adafruit-feather-nrf52840-express
+
 
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= ../RIOT
@@ -42,6 +39,12 @@ QUIET ?= 1
 
 
 USEMODULE += gate_monitoring
+# select sensor configuration for gate_monitoring module
+export SENSOR_CONFIG ?= sensor_config_only_no
+# set gate_monitoring module to use lorawan
+CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=true
+
+
 
 USEMODULE += ztimer_sec
 USEPKG += tinycbor

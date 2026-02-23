@@ -3,7 +3,7 @@ SRC += $(wildcard src/*.c)
 
 
 # SENSOR_CONFIG ?= default_sensor_config
-SENSOR_CONFIG ?= sensor_config_only_no
+# SENSOR_CONFIG ?= sensor_config_only_no
 # CFLAGS += -O0
 
 

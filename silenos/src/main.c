@@ -33,10 +33,12 @@
 
 
 
-// - debug output
-#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
+#ifndef GATE_MONITORING_USE_LORAWAN
+    #define GATE_MONITORING_USE_LORAWAN true
+#endif
 
 /* ------------------------ */
 
@@ -47,14 +49,14 @@ int main(void)
     ztimer_sleep(ZTIMER_SEC, 3);
     ztimer_release(ZTIMER_SEC);
 
-    puts("Application 'Silenos' starting.");
+    DEBUG("Application 'Silenos' starting.");
 
 
-    initialize_monitoring(false);
+    initialize_monitoring(GATE_MONITORING_USE_LORAWAN);
 
     start_monitoring_routine();
 
-    gpio_toggle(LED1_PIN);
+    // gpio_toggle(LED1_PIN);
     while (1)
     {
         thread_sleep();
