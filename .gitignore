@@ -50,3 +50,15 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+bin/
+.cache
+
+.vscode/
+.idea/
+.zed/
+.env
+compile_commands.json
+
+*cppcheck*
+
+hardware/

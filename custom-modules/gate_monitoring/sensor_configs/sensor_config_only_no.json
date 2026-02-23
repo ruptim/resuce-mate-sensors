@@ -1,0 +1,32 @@
+{
+    "location": "polder40/gate14",
+    "sensors": [
+        {
+            "name": "polder40/gate14/01",
+            "type": "1",
+            "port_pin2": [
+                0,
+                8
+            ]
+        },
+        {
+            "name": "polder40/gate14/02",
+            "type": "1",
+           
+            "port_pin2": [
+                0,
+                12
+            ]
+        },
+        {
+            "name": "polder40/gate14/03",
+            "type": "1",
+            "port_pin2": [
+                0,
+                5
+            ]
+         
+        }
+    ],
+    "multi_sensor_mode": "MAJORITY_SEQUENCE"
+}
