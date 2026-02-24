@@ -4,8 +4,7 @@ SRC += $(wildcard src/*.c)
 # select sensor configuration for gate_monitoring module
 export SENSOR_CONFIG ?= sensor_config_only_no
 # set gate_monitoring module to use lorawan
-CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=true
-CFLAGS+= -DGATE_MONITORING_ENABLE_DEBUG=0
+CFLAGS+= -DGATE_MONITORING_ENABLE_DEBUG=1
 
 # CFLAGS += -O0
 

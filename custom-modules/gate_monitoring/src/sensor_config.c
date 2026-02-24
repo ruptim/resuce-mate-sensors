@@ -17,7 +17,7 @@ int init_sensors(kernel_pid_t receive_pid)
     
     /* first cast to specific param type and then to base params type for the array. */
     registered_sensors_params[SENSOR_1_ID] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
-        .no_pin = GPIO_PIN(0,8),
+        .no_pin = GPIO_PIN(1,9),
         .no_int_flank = GPIO_BOTH,
         .no_callback = reed_no_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_1_REED_NO_ID],
@@ -36,7 +36,7 @@ int init_sensors(kernel_pid_t receive_pid)
     
     /* first cast to specific param type and then to base params type for the array. */
     registered_sensors_params[SENSOR_2_ID] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
-        .no_pin = GPIO_PIN(0,12),
+        .no_pin = GPIO_PIN(0,8),
         .no_int_flank = GPIO_BOTH,
         .no_callback = reed_no_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_2_REED_NO_ID],
@@ -55,7 +55,7 @@ int init_sensors(kernel_pid_t receive_pid)
     
     /* first cast to specific param type and then to base params type for the array. */
     registered_sensors_params[SENSOR_3_ID] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
-        .no_pin = GPIO_PIN(0,5),
+        .no_pin = GPIO_PIN(0,10),
         .no_int_flank = GPIO_BOTH,
         .no_callback = reed_no_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_3_REED_NO_ID],

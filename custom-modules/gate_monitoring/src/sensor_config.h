@@ -23,13 +23,13 @@ extern C {
 #endif
 
 /* Location of the sensors defined in the config file. */
-#define SENSOR_CONFIG_LOCATION "polder11/gate13"
+#define SENSOR_CONFIG_LOCATION "polder40/gate14"
 
 /* Polder number of the location. */
-#define SENSOR_CONFIG_LOCATION_POLDER 11
+#define SENSOR_CONFIG_LOCATION_POLDER 40
 
 /* Gate number of the location. */
-#define SENSOR_CONFIG_LOCATION_GATE 13
+#define SENSOR_CONFIG_LOCATION_GATE 14
 
 /* Number of physical sensors connected. */
 #define NUM_SENSORS 3

@@ -37,6 +37,7 @@ VERBOSE_ASSERT ?= 1
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 1
 
+CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=false
 
 USEMODULE += gate_monitoring
 
