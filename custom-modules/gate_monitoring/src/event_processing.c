@@ -130,6 +130,8 @@ void regular_update_timer_callback(void *args)
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         msg_send(&alarm_cb_args[i].msg, alarm_cb_args[i].pid);
     }
+
+    ztimer_set(ZTIMER_SEC, &regular_update_timer, REGULAR_UPDATE_TIMER_INTERVAL_S);
 }
 
 void temporal_confirm_timer_callback(void *args)
@@ -143,7 +145,7 @@ void temporal_confirm_timer_callback(void *args)
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, int value)
 {
-    ztimer_set(ZTIMER_SEC, &regular_update_timer, REGULAR_UPDATE_TIMER_INTERVAL_S);
+    
 
     ztimer_acquire(ZTIMER_MSEC);
     ztimer_now_t time = ztimer_now(ZTIMER_MSEC);
