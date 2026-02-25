@@ -28,10 +28,8 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 
 static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
-
 /* defines the interval between regular updates - 5 mins  */
-// #define REGULAR_UPDATE_TIMER_INTERVAL_S 300  
-#define REGULAR_UPDATE_TIMER_INTERVAL_S 300  
+#define REGULAR_UPDATE_TIMER_INTERVAL_S 10
 static ztimer_t regular_update_timer = { 0 };
 
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */
@@ -43,7 +41,6 @@ static long long sensor_event_counter = 0;
 static mutex_t gate_state_mutex = MUTEX_INIT;
 
 /* ------------ Prototype declarations ---------------- */
-
 
 /**
  * @brief Timer callback triggering when TEMPORAL_CONFIRM_TIMER_INTERVAL_S has passed, triggering the readout of all sensors.
@@ -132,20 +129,9 @@ void regular_update_timer_callback(void *args)
 
     /* trigger all sensors once to determine current status */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        const sensor_type_t sensor_type = DECODE_SENSOR_TYPE(alarm_cb_args[i].msg.type);
-        const sensor_id_t sensor_id = DECODE_SENSOR_ID(alarm_cb_args[i].msg.type);
-        const value_id_t value_id = DECODE_VALUE_ID(alarm_cb_args[i].msg.type);
-        gate_state.sensor_value_states[i].sensor_id = sensor_id;
-        gate_state.sensor_value_states[i].type = sensor_type;
-        gate_state.sensor_value_states[i].value_id = value_id;
-
-        gate_state.sensor_value_states[i].latest_arrive_ticket = 0;
-
         msg_send(&alarm_cb_args[i].msg, alarm_cb_args[i].pid);
     }
-    
 }
-
 
 void temporal_confirm_timer_callback(void *args)
 {
@@ -157,9 +143,9 @@ void temporal_confirm_timer_callback(void *args)
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, int value)
 {
-    ztimer_acquire(ZTIMER_USEC);
-    ztimer_now_t time = ztimer_now(ZTIMER_USEC);
-    ztimer_release(ZTIMER_USEC);
+    ztimer_acquire(ZTIMER_MSEC);
+    ztimer_now_t time = ztimer_now(ZTIMER_MSEC);
+    ztimer_release(ZTIMER_MSEC);
 
     mutex_lock(&gate_state_mutex);
 
@@ -181,10 +167,12 @@ void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, 
             // TODO report after timer expired
             gate_state.sensor_value_states[value_id].is_masked = true;
         }
+        ztimer_acquire(ZTIMER_MSEC);
         ztimer_set(ZTIMER_MSEC, &temporal_confirm_timer, TEMPORAL_CONFIRM_TIMER_INTERVAL_MS);
+        ztimer_release(ZTIMER_MSEC);
 
-        DEBUG("[DEBG] Sensor %d (%s): %d, %d\n", sensor_id,
-              sensor_type == SENSOR_TYPE_ID_REED_SWITCH_NC ? "NC" : "NO", value, ticket);
+        DEBUG("[DEBG] Sensor %d (Type: %d): %d, %d\n", sensor_id,
+              sensor_type, value, ticket);
     }
 
     mutex_unlock(&gate_state_mutex);
@@ -198,14 +186,17 @@ void *await_sensor_events(void *arg)
     /* initialize timers */
 
     regular_update_timer.callback = regular_update_timer_callback;
-    ztimer_set(ZTIMER_SEC, &regular_update_timer, REGULAR_UPDATE_TIMER_INTERVAL_S);
-    
+
     temporal_confirm_timer.callback = temporal_confirm_timer_callback;
 
     /* initialize gate state by triggering all sensors once */
     init_gate_state();
 
     DEBUG("[INFO] Receiving Events!\n");
+
+    ztimer_acquire(ZTIMER_SEC);
+    ztimer_set(ZTIMER_SEC, &regular_update_timer, REGULAR_UPDATE_TIMER_INTERVAL_S);
+    ztimer_release(ZTIMER_SEC);
 
     while (true) {
         msg_t msg;
@@ -220,33 +211,34 @@ void *await_sensor_events(void *arg)
             (void)sensor_id;
             dwas509_t *dev = (dwas509_t *)msg.content.ptr;
             int distance_um = dwas509_read_um(dev);
-
+            // distance_um = 1024;
             new_sensor_event(sensor_id, sensor_type, value_id, distance_um);
 
             break;
-            case SENSOR_TYPE_ID_REED_SWITCH_NC:
-                (void)sensor_id;
-                reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;
-                reed_sensor_val_t nc_val;
-                reed_sensor_driver_read_nc(reed_nc, &nc_val);
+        case SENSOR_TYPE_ID_REED_SWITCH_NC:
+            (void)sensor_id;
+            reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;
+            reed_sensor_val_t nc_val;
+            reed_sensor_driver_read_nc(reed_nc, &nc_val);
 
-                new_sensor_event(sensor_id, sensor_type, value_id, nc_val);
-                break;
-            case SENSOR_TYPE_ID_REED_SWITCH_NO:
-                (void)
-                    sensor_id; // not needed, but prevents the compiler from complaining about having declaration right after the "case label".
-                reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
-                reed_sensor_val_t no_val;
-                reed_sensor_driver_read_no(reed_no, &no_val);
+            new_sensor_event(sensor_id, sensor_type, value_id, nc_val);
+            break;
+        case SENSOR_TYPE_ID_REED_SWITCH_NO:
+            (void)
+                sensor_id; // not needed, but prevents the compiler from complaining about having declaration right after the "case label".
+            reed_sensor_driver_t *reed_no = (reed_sensor_driver_t *)msg.content.ptr;
+            reed_sensor_val_t no_val;
+            reed_sensor_driver_read_no(reed_no, &no_val);
 
-                new_sensor_event(sensor_id, sensor_type, value_id, no_val);
+            new_sensor_event(sensor_id, sensor_type, value_id, no_val);
 
-                break;
-            }
+            break;
+        }
     }
 }
 
-static void reset_sensor_tickets(bool is_closing_phase){
+static void reset_sensor_tickets(bool is_closing_phase)
+{
     /* when in closing phase and all are triggered */
     uint8_t start_idx = is_closing_phase ? 0 : (NUM_UNIQUE_SENSOR_VALUES - 1);
     uint8_t end_idx = is_closing_phase ? NUM_UNIQUE_SENSOR_VALUES : -1;
@@ -260,9 +252,7 @@ static void reset_sensor_tickets(bool is_closing_phase){
         gate_state.sensor_value_states[i].latest_arrive_ticket = get_new_event_ticket();
         i += step;
     }
-
 }
-
 
 bool compare_reed_sensor_value_state(sensor_value_state_t sensor, uint8_t comp_state)
 {
@@ -296,7 +286,7 @@ bool verify_ticket_sequence(bool closing_phase, gate_state_t *cur_gate_state)
 
     while (i != end_idx) {
         /* 1. Skip masked sensors and sensors already flagged as out-of-sequence */
-        if (cur_gate_state->sensor_value_states[i].is_masked || cur_gate_state->sensor_value_states[i].is_out_of_sequence) {
+        if ((gate_state.sensor_value_states[i].type == SENSOR_TYPE_ID_DWAS509) || (cur_gate_state->sensor_value_states[i].is_masked || cur_gate_state->sensor_value_states[i].is_out_of_sequence)) {
             i += step;
             continue;
         }
@@ -333,10 +323,15 @@ static int eval_equal_sequence_mode(bool closing_phase)
 {
     bool state = GATE_CLOSED;
     uint8_t state_counter = 0;
+    uint8_t max_state_counter = NUM_UNIQUE_SENSOR_VALUES;
 
     verify_ticket_sequence(closing_phase, &gate_state);
     /* check if all value states are "activated" and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        if (gate_state.sensor_value_states[i].type == SENSOR_TYPE_ID_DWAS509) {
+            max_state_counter--;
+            continue;
+        }
         /* a masked sensor is treated as not activated */
         if (!gate_state.sensor_value_states[i].is_masked && !gate_state.sensor_value_states[i].is_out_of_sequence &&
             compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
@@ -352,7 +347,7 @@ static int eval_equal_sequence_mode(bool closing_phase)
     }
 
     /* flag wether all are activate or none is activated */
-    if (state_counter == 0 || state_counter == NUM_UNIQUE_SENSOR_VALUES) {
+    if (state_counter == 0 || state_counter == max_state_counter) {
         gate_state.all_sensor_in_same_state = true;
     }
     else {
@@ -365,6 +360,7 @@ static int eval_equal_sequence_mode(bool closing_phase)
 static int eval_majority_sequence_mode(bool closing_phase)
 {
     int state_counter = 0;
+    uint8_t max_state_counter = NUM_UNIQUE_SENSOR_VALUES;
 
     int phase_comp_state = closing_phase ? REED_SENSOR_ACTIVATED : REED_SENSOR_NOT_ACTIVATED;
     int phase_return_state = closing_phase ? GATE_CLOSED : GATE_OPEN;
@@ -372,6 +368,11 @@ static int eval_majority_sequence_mode(bool closing_phase)
     verify_ticket_sequence(closing_phase, &gate_state);
     /* check how many value states are corresponding to the current phase and update the sensor_triggered_states array */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        if (gate_state.sensor_value_states[i].type == SENSOR_TYPE_ID_DWAS509) {
+            max_state_counter--;
+            continue;
+        }
+
         /* a masked or out-of-seq. sensor is treated as not activated */
         if ((!gate_state.sensor_value_states[i].is_masked && !gate_state.sensor_value_states[i].is_out_of_sequence) &&
             compare_reed_sensor_value_state(gate_state.sensor_value_states[i], phase_comp_state)) {
@@ -386,13 +387,12 @@ static int eval_majority_sequence_mode(bool closing_phase)
     }
 
     /* flag wether all are activate or none is activated */
-    if (state_counter == 0 || state_counter == NUM_UNIQUE_SENSOR_VALUES) {
+    if (state_counter == 0 || state_counter == max_state_counter) {
         gate_state.all_sensor_in_same_state = true;
     }
     else {
         gate_state.all_sensor_in_same_state = false;
     }
-    
 
     DEBUG("[DEBG] MAJ_SEQ for %s: %d > %d ?\n", phase_return_state == GATE_CLOSED ? "CLOSED" : "OPEN", state_counter, majority_threshold);
     /* are the majority of values in their "activated" state? */
@@ -406,14 +406,11 @@ void *evaluate_gate_state(void *arg)
     /* lock mutex so the sensor values don't change during evaluation. */
     mutex_lock(&gate_state_mutex);
 
-
     DEBUG("[DEBG] ----\n[DEBG] State (triggers, ticket): ");
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         DEBUG("%ld (%d, %d), ", (long unsigned int)gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter, gate_state.sensor_value_states[i].latest_arrive_ticket);
     }
     DEBUG("\n");
-
-
 
     bool gate_is_closed = GATE_OPEN;
 
@@ -431,23 +428,18 @@ void *evaluate_gate_state(void *arg)
         break;
     }
 
-
     /* If all sensors are in the same state, reset the event tickets to lower values to prevent a overflow in the longterm. */
-    if (gate_state.all_sensor_in_same_state){
+    if (gate_state.all_sensor_in_same_state) {
         reset_sensor_tickets(is_closing_phase);
     }
 
     /* save snapshot of current gate state for verification and sending   */
     snapshot_current_gate_state();
 
-
-
     /* the next step is to verfiy the new gate state. */
     verify_gate_state(gate_is_closed, is_closing_phase);
 
-
     mutex_unlock(&gate_state_mutex);
-
 
     return NULL;
 }
