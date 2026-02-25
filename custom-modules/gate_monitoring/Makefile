@@ -11,9 +11,8 @@ CFLAGS+= -DGATE_MONITORING_ENABLE_DEBUG=1
 DISABLE_SENSOR_INTERUPTS=1
 
 
-
-GEN_OUTPUT := $(shell python code_gen/gen_sensor_config_code.py -c $(CURDIR)/sensor_configs/$(SENSOR_CONFIG).json $(if $(DISABLE_SENSOR_INTERRUPTS == 1),-d))
-$(info    python code_gen/gen_sensor_config_code.py -c $(CURDIR)/sensor_configs/$(SENSOR_CONFIG).json $(if $(DISABLE_SENSOR_INTERRUPTS == 1),-d))
+GEN_OUTPUT := $(shell python code_gen/gen_sensor_config_code.py -c $(CURDIR)/sensor_configs/$(SENSOR_CONFIG).json $(if $(filter 1,$(DISABLE_SENSOR_INTERUPTS)),-d))
+$(info    python code_gen/gen_sensor_config_code.py -c $(CURDIR)/sensor_configs/$(SENSOR_CONFIG).json $(if $(filter 1,$(DISABLE_SENSOR_INTERUPTS)),-d))
 $(info    $(GEN_OUTPUT))
 
 include $(RIOTBASE)/Makefile.base
