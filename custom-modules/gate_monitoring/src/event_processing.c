@@ -29,7 +29,7 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
 /* defines the interval between regular updates - 5 mins  */
-#define REGULAR_UPDATE_TIMER_INTERVAL_S 10
+#define REGULAR_UPDATE_TIMER_INTERVAL_S 300
 static ztimer_t regular_update_timer = { 0 };
 
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */

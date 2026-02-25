@@ -269,7 +269,7 @@ def main():
                 id_counter += 1
 
             nc_callback = "reed_nc_callback"
-            no_callback = "reed_nc_callback"
+            no_callback = "reed_no_callback"
             if args.disable_irqs:
                 nc_callback = "NULL"
                 no_callback = "NULL"
@@ -282,6 +282,8 @@ def main():
                     [
                         "/* first cast to specific param type and then to base params type for the array. */",
                         f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                        f"    .nc_pin_used = true,",
+                        f"    .no_pin_used = true,",
                         f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
                         f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
                         f"    .nc_int_flank = GPIO_BOTH,",
@@ -305,6 +307,7 @@ def main():
                     [
                         "/* first cast to specific param type and then to base params type for the array. */",
                         f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                        f"    .nc_pin_used = true,",
                         f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
                         f"    .nc_int_flank = GPIO_BOTH,",
                         f"    .nc_callback = {nc_callback},",
@@ -324,6 +327,7 @@ def main():
                 [
                     "/* first cast to specific param type and then to base params type for the array. */",
                     f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
+                    f"    .no_pin_used = true,",
                     f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
                     f"    .no_int_flank = GPIO_BOTH,",
                     f"    .no_callback = {no_callback},",
