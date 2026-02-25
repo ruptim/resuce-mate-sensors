@@ -20,7 +20,7 @@ int init_sensors(kernel_pid_t receive_pid)
         .no_pin_used = true,
         .no_pin = GPIO_PIN(1,9),
         .no_int_flank = GPIO_BOTH,
-        .no_callback = NULL,
+        .no_callback = reed_no_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_1_REED_NO_ID],
         .use_external_pulldown = false,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
@@ -40,7 +40,7 @@ int init_sensors(kernel_pid_t receive_pid)
         .no_pin_used = true,
         .no_pin = GPIO_PIN(0,8),
         .no_int_flank = GPIO_BOTH,
-        .no_callback = NULL,
+        .no_callback = reed_no_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_2_REED_NO_ID],
         .use_external_pulldown = false,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
@@ -60,7 +60,7 @@ int init_sensors(kernel_pid_t receive_pid)
         .no_pin_used = true,
         .no_pin = GPIO_PIN(0,10),
         .no_int_flank = GPIO_BOTH,
-        .no_callback = NULL,
+        .no_callback = reed_no_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_3_REED_NO_ID],
         .use_external_pulldown = false,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };

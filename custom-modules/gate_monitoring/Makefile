@@ -8,7 +8,7 @@ CFLAGS+= -DGATE_MONITORING_ENABLE_DEBUG=1
 
 # CFLAGS += -O0
 
-DISABLE_SENSOR_INTERUPTS=1
+DISABLE_SENSOR_INTERUPTS=0
 
 
 GEN_OUTPUT := $(shell python code_gen/gen_sensor_config_code.py -c $(CURDIR)/sensor_configs/$(SENSOR_CONFIG).json $(if $(filter 1,$(DISABLE_SENSOR_INTERUPTS)),-d))
