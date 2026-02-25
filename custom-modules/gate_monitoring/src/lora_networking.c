@@ -23,6 +23,10 @@
 /* pointer of the LoRaWan network interface */
 static netif_t * lorwan_netif;
 
+static gnrc_netreg_entry_t entry;
+
+static kernel_pid_t rx_pid;
+
 /* Size of reception message queue */
 #define QUEUE_SIZE 8
 
@@ -162,7 +166,7 @@ int init_lorawan_stack(void){
 
     lorwan_netif = _find_lorawan_network_interface();
 
-    kernel_pid_t rx_pid = thread_create(_rx_thread_stack, sizeof(_rx_thread_stack),
+    rx_pid = thread_create(_rx_thread_stack, sizeof(_rx_thread_stack),
                                     THREAD_PRIORITY_MAIN - 1,
                                     THREAD_CREATE_STACKTEST, _rx_thread, NULL,
                                     "lorawan_rx");
@@ -173,7 +177,7 @@ int init_lorawan_stack(void){
     }
 
     /* register thread to receive LoRaWAN packets */
-    gnrc_netreg_entry_t entry = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
+    entry =  (gnrc_netreg_entry_t) GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
                                                     rx_pid);
     gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &entry);
 
@@ -251,6 +255,6 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     }
 
     
-
+    mutex_unlock(&_lorawan_tx_mutex);
     return 0;
 }
