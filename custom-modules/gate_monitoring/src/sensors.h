@@ -3,9 +3,10 @@
 #include "msg.h"
 
 #include "reed_sensor_driver.h"
+#include "dwas509.h"
 
-#define SENSOR_TYPE_ID_DWAX509M183X0  1
-#define SENSOR_TYPE_ID_REED_SWITCH 2
+#define SENSOR_TYPE_ID_DWAS509        1
+#define SENSOR_TYPE_ID_REED_SWITCH    2
 #define SENSOR_TYPE_ID_REED_SWITCH_NC 3
 #define SENSOR_TYPE_ID_REED_SWITCH_NO 4
 
@@ -28,7 +29,7 @@ typedef enum {
 
 
 #define SENSOR_ENCODE_SENSOR_ID_BITS 3
-#define SENSOR_ENCODE_TYPE_BITS 4
+#define SENSOR_ENCODE_TYPE_BITS 8 // to support inductive sensor readings
 #define SENSOR_ENCODE_VALUE_ID_BITS 4
 #define SENSOR_ENCODE_SENSOR_TYPE_MASK ((0x1 << SENSOR_ENCODE_TYPE_BITS)-1)
 #define SENSOR_ENCODE_VALUE_ID_MASK ((0x1 << SENSOR_ENCODE_VALUE_ID_BITS)-1)
@@ -110,12 +111,12 @@ typedef enum {
 
 typedef union {
     reed_sensor_driver_t reed_sensor;
-    // dwax509m183x0_t inductive_sensor;
+    dwas509_t inductive_sensor;
 } sensor_base_type_t;
 
 typedef union {
     reed_sensor_driver_params_t reed_sensor_params;
-    // dwax509m183x0_params_t inductive_sensor_params;
+    dwas509_params_t inductive_sensor_params;
 } sensor_base_params_t;
 
 typedef struct {
@@ -123,7 +124,7 @@ typedef struct {
     msg_t msg;        // preallocated scratchspace for msg;
 } alarm_cb_args_t;
 
-void dwax_alarm_cb(void *arg);
+void dwas_alarm_cb(void *arg);
 
 /**
  * @brief Callback function the normally-closed pin of the reed switch triggering the readout of the NC pin.

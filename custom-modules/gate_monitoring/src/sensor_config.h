@@ -32,10 +32,10 @@ extern C {
 #define SENSOR_CONFIG_LOCATION_GATE 14
 
 /* Number of physical sensors connected. */
-#define NUM_SENSORS 3
+#define NUM_SENSORS 4
 
 /* Number of contacts (physical connections) (some sensors have multiple contacts e.g. reed sensors) */
-#define NUM_UNIQUE_SENSOR_VALUES 3
+#define NUM_UNIQUE_SENSOR_VALUES 4
 
 /* Configuration in which the sensors are to be interpreted. */
 #define ACTIVE_MULTI_SENSOR_MODE MAJORITY_SEQUENCE
@@ -54,11 +54,14 @@ extern alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
 #define SENSOR_3_ID 2
 #define SENSOR_3_REED_NO_ID 2
 
-/*  The number of maximum bytes needed for all sensor values. */
-#define SENSORS_MAX_VALUE_BYTES_NEEDED 3
+#define SENSOR_4_ID 3
+#define SENSOR_4_DWAS509_ID 3
 
-extern sensor_base_type_t registered_sensors[3];
-extern sensor_base_params_t registered_sensors_params[3];
+/*  The number of maximum bytes needed for all sensor values. */
+#define SENSORS_MAX_VALUE_BYTES_NEEDED 11
+
+extern sensor_base_type_t registered_sensors[4];
+extern sensor_base_params_t registered_sensors_params[4];
 
 
 /**

@@ -1,4 +1,5 @@
 #include "event_processing.h"
+#include "dwas509.h"
 #include "sensor_config.h"
 #include "sensors.h"
 #include "state_validation.h"
@@ -27,6 +28,12 @@ static msg_t rcv_queue[RCV_QUEUE_SIZE];
 
 static char eval_thread_stack[THREAD_STACKSIZE_MAIN];
 
+
+/* defines the interval between regular updates - 5 mins  */
+// #define REGULAR_UPDATE_TIMER_INTERVAL_S 300  
+#define REGULAR_UPDATE_TIMER_INTERVAL_S 300  
+static ztimer_t regular_update_timer = { 0 };
+
 /* defines the time to wait when a new event has arrived after which the sensor values are evaluated */
 #define TEMPORAL_CONFIRM_TIMER_INTERVAL_MS 2000
 static ztimer_t temporal_confirm_timer = { 0 };
@@ -36,6 +43,14 @@ static long long sensor_event_counter = 0;
 static mutex_t gate_state_mutex = MUTEX_INIT;
 
 /* ------------ Prototype declarations ---------------- */
+
+
+/**
+ * @brief Timer callback triggering when TEMPORAL_CONFIRM_TIMER_INTERVAL_S has passed, triggering the readout of all sensors.
+ * 
+ * @param args  not used.
+ */
+static void regular_update_timer_callback(void *args);
 
 /**
  * @brief Timer callback triggering when TEMPORAL_CONFIRM_TIMER_INTERVAL_MS has passed, starting a thread to evaluate the sensor values.
@@ -110,6 +125,28 @@ static int eval_equal_sequence_mode(bool closing_phase);
 
 /* ------------ function definitions ---------------- */
 
+void regular_update_timer_callback(void *args)
+{
+    (void)args;
+    ztimer_set(ZTIMER_SEC, &regular_update_timer, REGULAR_UPDATE_TIMER_INTERVAL_S);
+
+    /* trigger all sensors once to determine current status */
+    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+        const sensor_type_t sensor_type = DECODE_SENSOR_TYPE(alarm_cb_args[i].msg.type);
+        const sensor_id_t sensor_id = DECODE_SENSOR_ID(alarm_cb_args[i].msg.type);
+        const value_id_t value_id = DECODE_VALUE_ID(alarm_cb_args[i].msg.type);
+        gate_state.sensor_value_states[i].sensor_id = sensor_id;
+        gate_state.sensor_value_states[i].type = sensor_type;
+        gate_state.sensor_value_states[i].value_id = value_id;
+
+        gate_state.sensor_value_states[i].latest_arrive_ticket = 0;
+
+        msg_send(&alarm_cb_args[i].msg, alarm_cb_args[i].pid);
+    }
+    
+}
+
+
 void temporal_confirm_timer_callback(void *args)
 {
     (void)args;
@@ -158,7 +195,11 @@ void *await_sensor_events(void *arg)
     (void)arg;
     msg_init_queue(rcv_queue, RCV_QUEUE_SIZE);
 
-    /* initialize timer callback */
+    /* initialize timers */
+
+    regular_update_timer.callback = regular_update_timer_callback;
+    ztimer_set(ZTIMER_SEC, &regular_update_timer, REGULAR_UPDATE_TIMER_INTERVAL_S);
+    
     temporal_confirm_timer.callback = temporal_confirm_timer_callback;
 
     /* initialize gate state by triggering all sensors once */
@@ -175,14 +216,14 @@ void *await_sensor_events(void *arg)
         const value_id_t value_id = DECODE_VALUE_ID(msg.type);
 
         switch (sensor_type) {
-        // case SENSOR_TYPE_ID_DWAX509M183X0:
-        //     (void)sensor_id;
-        //     dwax509m183x0_t *dev = (dwax509m183x0_t *)msg.content.ptr;
-        //     int distance_um = dwax509m183x0_distance_um(dev);
+        case SENSOR_TYPE_ID_DWAS509:
+            (void)sensor_id;
+            dwas509_t *dev = (dwas509_t *)msg.content.ptr;
+            int distance_um = dwas509_read_um(dev);
 
-        //     new_sensor_event(sensor_id, sensor_type, value_id, distance_um);
+            new_sensor_event(sensor_id, sensor_type, value_id, distance_um);
 
-        //     break;
+            break;
             case SENSOR_TYPE_ID_REED_SWITCH_NC:
                 (void)sensor_id;
                 reed_sensor_driver_t *reed_nc = (reed_sensor_driver_t *)msg.content.ptr;

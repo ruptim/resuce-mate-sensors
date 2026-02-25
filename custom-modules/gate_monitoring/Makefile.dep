@@ -1,6 +1,7 @@
 
 # drivers
 USEMODULE += reed_sensor_driver
+USEMODULE += dwas509
 USEMODULE += ztimer_sec
 USEMODULE += ztimer_msec
 

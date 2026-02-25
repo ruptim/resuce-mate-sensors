@@ -1,6 +1,6 @@
 #include "sensors.h"
 
-void dwax_alarm_cb(void *arg)
+void dwas_alarm_cb(void *arg)
 {
     alarm_cb_args_t *cb_args = (alarm_cb_args_t *)arg;
 

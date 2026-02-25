@@ -29,9 +29,13 @@ parser.add_argument(
     "-f", "--format-file", action="store_true", help="Run formatter on generated file."
 )
 
+parser.add_argument(
+    "-d", "--disable-irqs", action="store_true", help="Run formatter on generated file."
+)
+
 
 class SensorTypeID(Enum):
-    DWAX = "SENSOR_TYPE_ID_DWAX509M183X0"
+    DWAS = "SENSOR_TYPE_ID_DWAS509"
     REED_NC = "SENSOR_TYPE_ID_REED_SWITCH_NC"
     REED_NO = "SENSOR_TYPE_ID_REED_SWITCH_NO"
 
@@ -203,7 +207,7 @@ def main():
             name_base = "reed"
 
         elif int(s["type"]) == 2:  # INDUCTIVE
-            name_base = "dwax"
+            name_base = "dwas509"
 
         else:
             TypeError(f"Type {s['type']} not supported!")
@@ -264,9 +268,15 @@ def main():
 
                 id_counter += 1
 
-
+            nc_callback = "reed_nc_callback"
+            no_callback = "reed_nc_callback"
+            if args.disable_irqs:
+                nc_callback = "NULL"
+                no_callback = "NULL"
 
             if nc_pin and no_pin:
+            
+                     
                 ## driver init
                 init_code_writer.add_lines(
                     [
@@ -276,8 +286,8 @@ def main():
                         f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
                         f"    .nc_int_flank = GPIO_BOTH,",
                         f"    .no_int_flank = GPIO_BOTH,",
-                        f"    .nc_callback = reed_nc_callback,",
-                        f"    .no_callback = reed_no_callback,",
+                        f"    .nc_callback = {nc_callback},",
+                        f"    .no_callback = {no_callback},",
                         f"    .nc_callback_args = (void *)&alarm_cb_args[{s_id_nc}],",
                         f"    .no_callback_args = (void *)&alarm_cb_args[{s_id_no}],",
                         f"    .use_external_pulldown = {external_pulldown()},",
@@ -290,13 +300,14 @@ def main():
                     ]
                 )
             elif nc_pin:
-                 init_code_writer.add_lines(
+
+                init_code_writer.add_lines(
                     [
                         "/* first cast to specific param type and then to base params type for the array. */",
                         f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
                         f"    .nc_pin = GPIO_PIN({s['port_pin1'][0]},{s['port_pin1'][1]}),",
                         f"    .nc_int_flank = GPIO_BOTH,",
-                        f"    .nc_callback = reed_nc_callback,",
+                        f"    .nc_callback = {nc_callback},",
                         f"    .nc_callback_args = (void *)&alarm_cb_args[{s_id_nc}],",
                         f"    .use_external_pulldown = {external_pulldown()},",
                         f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
@@ -315,7 +326,7 @@ def main():
                     f"{Subscript(registered_sensors_params, sensor_id)} = (sensor_base_params_t) (reed_sensor_driver_params_t) {{",
                     f"    .no_pin = GPIO_PIN({s['port_pin2'][0]},{s['port_pin2'][1]}),",
                     f"    .no_int_flank = GPIO_BOTH,",
-                    f"    .no_callback = reed_no_callback,",
+                    f"    .no_callback = {no_callback},",
                     f"    .no_callback_args = (void *)&alarm_cb_args[{s_id_no}],",
                     f"    .use_external_pulldown = {external_pulldown()},",
                     f"    .debounce_ms = REED_SENSOR_DEBOUNCE_MS }};",
@@ -333,14 +344,19 @@ def main():
             cw.add_define(s_id, id_counter)
             init_code_writer.add_lines(
                 [
-                    f"alarm_cb_args[{s_id}].pid = receive_pid;"
-                    f"alarm_cb_args[{s_id}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.DWAX.value},{s_id});"
+                    f"alarm_cb_args[{s_id}].pid = receive_pid;",
+                    f"alarm_cb_args[{s_id}].msg.type = ENCODE_SENSOR_TYPE_IDS({i},{SensorTypeID.DWAS.value},{s_id});",
                     f"alarm_cb_args[{s_id}].msg.content.ptr = (void *)&{Subscript(registered_sensors, sensor_id)};",
                     "\n",
                 ]
             )
             id_counter += 1
-            # TODO: initialization of dwax
+            
+            init_code_writer.add_lines([
+                f"dwas509_init(&{Subscript(registered_sensors, sensor_id)}.inductive_sensor,  &{Subscript(registered_sensors_params, sensor_id)}.inductive_sensor_params);",
+                "\n",
+            ])
+            
 
         cw.add_line(ignore_indent=True)
 

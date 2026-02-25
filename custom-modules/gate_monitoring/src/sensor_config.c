@@ -2,8 +2,8 @@
 #include "sensor_config.h"
 
 alarm_cb_args_t alarm_cb_args[NUM_UNIQUE_SENSOR_VALUES];
-sensor_base_type_t registered_sensors[3];
-sensor_base_params_t registered_sensors_params[3];
+sensor_base_type_t registered_sensors[4];
+sensor_base_params_t registered_sensors_params[4];
 
 int init_sensors(kernel_pid_t receive_pid)
 {
@@ -19,7 +19,7 @@ int init_sensors(kernel_pid_t receive_pid)
     registered_sensors_params[SENSOR_1_ID] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
         .no_pin = GPIO_PIN(1,9),
         .no_int_flank = GPIO_BOTH,
-        .no_callback = reed_no_callback,
+        .no_callback = reed_nc_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_1_REED_NO_ID],
         .use_external_pulldown = false,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
@@ -38,7 +38,7 @@ int init_sensors(kernel_pid_t receive_pid)
     registered_sensors_params[SENSOR_2_ID] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
         .no_pin = GPIO_PIN(0,8),
         .no_int_flank = GPIO_BOTH,
-        .no_callback = reed_no_callback,
+        .no_callback = reed_nc_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_2_REED_NO_ID],
         .use_external_pulldown = false,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
@@ -57,7 +57,7 @@ int init_sensors(kernel_pid_t receive_pid)
     registered_sensors_params[SENSOR_3_ID] = (sensor_base_params_t) (reed_sensor_driver_params_t) {
         .no_pin = GPIO_PIN(0,10),
         .no_int_flank = GPIO_BOTH,
-        .no_callback = reed_no_callback,
+        .no_callback = reed_nc_callback,
         .no_callback_args = (void *)&alarm_cb_args[SENSOR_3_REED_NO_ID],
         .use_external_pulldown = false,
         .debounce_ms = REED_SENSOR_DEBOUNCE_MS };
@@ -66,6 +66,13 @@ int init_sensors(kernel_pid_t receive_pid)
     	return ret;
     }
     
+    
+    /* -------------------- init code for sensor 'sensor_4_dwas509' -------------------- */
+    alarm_cb_args[SENSOR_4_DWAS509_ID].pid = receive_pid;
+    alarm_cb_args[SENSOR_4_DWAS509_ID].msg.type = ENCODE_SENSOR_TYPE_IDS(3,SENSOR_TYPE_ID_DWAS509,SENSOR_4_DWAS509_ID);
+    alarm_cb_args[SENSOR_4_DWAS509_ID].msg.content.ptr = (void *)&registered_sensors[SENSOR_4_ID];
+    
+    dwas509_init(&registered_sensors[SENSOR_4_ID].inductive_sensor,  &registered_sensors_params[SENSOR_4_ID].inductive_sensor_params);
     
     return 0;
 }
