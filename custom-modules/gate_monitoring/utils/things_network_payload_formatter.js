@@ -1,4 +1,9 @@
+/* 
+CBOR parser from: https://github.com/paroga/cbor-js
+Under the MIT License (MIT)
+Copyright (c) 2014 Patrick Gansterer <paroga@paroga.com>
 
+*/
 var POW_2_24 = 5.960464477539063e-8,
     POW_2_32 = 4294967296,
     POW_2_53 = 9007199254740992;
@@ -216,7 +221,7 @@ function decode(data, tagger, simpleValue) {
 
 
 
-
+// --------------- TTN decoding --------------------------------
 
 
 function decodeSensorType(typeIdValue, type_bits, value_id_bits) {
@@ -235,7 +240,7 @@ function decodeValueId(typeIdValue, value_id_bits) {
 }
 
 var types = {
-    1: "DWAX",
+    1: "DWAS509",
     2: "REED",
     3: "REED_NC",
     4: "REED_NO",
