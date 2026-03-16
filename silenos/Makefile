@@ -42,6 +42,9 @@ CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=false
 USEMODULE += gate_monitoring
 
 
+USEMODULE += shell_cmds_default
+USEMODULE += ps
+
 ENABLE_DEBUG = 1
 
 USEMODULE += ztimer_sec

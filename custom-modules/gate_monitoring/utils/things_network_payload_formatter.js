@@ -257,7 +257,7 @@ function combineLocation(l1, l2) {
 }
 
 
-export function decodeUplink(input) {
+function decodeUplink(input) {
 
     var bytes = input.bytes;
     var arrayBuffer = new Uint8Array(bytes).buffer;

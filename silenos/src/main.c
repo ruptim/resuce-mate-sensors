@@ -27,6 +27,10 @@
 #include "periph/gpio.h"
 #include "board.h"
 
+
+#include "shell.h"
+
+#include "periph/pm.h"
 /* Application headers */
 
 #include "gate_monitoring.h"
@@ -42,9 +46,23 @@
 
 /* ------------------------ */
 
+
+#define REBOOT_TIMER_INTERVAL_S (60*(60))*3 // 3H
+static ztimer_t reboot_timer = { 0 };
+
+void reboot_callback(void *args){
+    (void) args;
+    pm_reboot();
+}
+
+
 int main(void)
 {
-    
+
+
+    reboot_timer.callback = reboot_callback;
+    ztimer_set(ZTIMER_SEC, &reboot_timer, REBOOT_TIMER_INTERVAL_S);
+
     ztimer_acquire(ZTIMER_SEC);
     ztimer_sleep(ZTIMER_SEC, 3);
     ztimer_release(ZTIMER_SEC);
@@ -55,6 +73,12 @@ int main(void)
     initialize_monitoring(GATE_MONITORING_USE_LORAWAN);
 
     start_monitoring_routine();
+
+        /* Buffer to store command line input */
+    char buffer[SHELL_DEFAULT_BUFSIZE];
+
+    /* Start the shell */
+    shell_run(NULL, buffer, SHELL_DEFAULT_BUFSIZE);
 
     // gpio_toggle(LED1_PIN);
     while (1)
