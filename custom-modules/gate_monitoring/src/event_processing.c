@@ -23,6 +23,8 @@
 
 static const int majority_threshold = ((NUM_UNIQUE_SENSOR_VALUES & 0x1) == 0x0 ? NUM_UNIQUE_SENSOR_VALUES >> 0x1 : (NUM_UNIQUE_SENSOR_VALUES >> 0x1) + 1);
 
+static kernel_pid_t gate_eval_thread_pid;
+
 #define RCV_QUEUE_SIZE 8
 static msg_t rcv_queue[RCV_QUEUE_SIZE];
 
@@ -125,7 +127,7 @@ static int eval_equal_sequence_mode(bool closing_phase);
 void regular_update_timer_callback(void *args)
 {
     (void)args;
-    
+
     /* trigger all sensors once to determine current status */
     for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
         msg_send(&alarm_cb_args[i].msg, alarm_cb_args[i].pid);
@@ -135,10 +137,11 @@ void regular_update_timer_callback(void *args)
 void temporal_confirm_timer_callback(void *args)
 {
     (void)args;
-    
 
-    thread_create(eval_thread_stack, sizeof(eval_thread_stack), THREAD_PRIORITY_MAIN - 1, 0,
-                  evaluate_gate_state, NULL, "gate_eval_thread");
+    if (thread_wakeup(gate_eval_thread_pid) != 1) {
+        puts("[ERROR] Failed to wake up gate eval thread!");
+        // return -1;
+    }
 }
 
 void new_sensor_event(uint8_t sensor_id, uint8_t sensor_type, uint8_t value_id, int value)
@@ -190,6 +193,9 @@ void *await_sensor_events(void *arg)
     regular_update_timer.callback = regular_update_timer_callback;
 
     temporal_confirm_timer.callback = temporal_confirm_timer_callback;
+
+    gate_eval_thread_pid = thread_create(eval_thread_stack, sizeof(eval_thread_stack), THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_SLEEPING,
+                                         evaluate_gate_state, NULL, "gate_eval_thread");
 
     /* initialize gate state by triggering all sensors once */
     init_gate_state();
@@ -405,43 +411,48 @@ void *evaluate_gate_state(void *arg)
 {
     (void)arg;
 
-    /* lock mutex so the sensor values don't change during evaluation. */
-    mutex_lock(&gate_state_mutex);
+    while (1) {
 
-    DEBUG("[DEBG] ----\n[DEBG] State (triggers, ticket): ");
-    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
-        DEBUG("%ld (%d, %d), ", (long unsigned int)gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter, gate_state.sensor_value_states[i].latest_arrive_ticket);
+        /* lock mutex so the sensor values don't change during evaluation. */
+        mutex_lock(&gate_state_mutex);
+
+        DEBUG("[DEBG] ----\n[DEBG] State (triggers, ticket): ");
+        for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+            DEBUG("%ld (%d, %d), ", (long unsigned int)gate_state.sensor_value_states[i].value, gate_state.sensor_value_states[i].event_counter, gate_state.sensor_value_states[i].latest_arrive_ticket);
+        }
+        DEBUG("\n");
+
+        bool gate_is_closed = GATE_OPEN;
+
+        /* the current phase (OPENING or CLOSING) is defined by the state of the last triggered sensor */
+        bool is_closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
+
+        /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
+        switch (gate_state.sensor_mode) {
+        case EQUAL_SEQUENCE:
+            gate_is_closed = eval_equal_sequence_mode(is_closing_phase);
+            break;
+        case MAJORITY_SEQUENCE:
+            gate_is_closed = eval_majority_sequence_mode(is_closing_phase);
+        default:
+            break;
+        }
+
+        /* If all sensors are in the same state, reset the event tickets to lower values to prevent a overflow in the longterm. */
+        if (gate_state.all_sensor_in_same_state) {
+            reset_sensor_tickets(is_closing_phase);
+        }
+
+        /* save snapshot of current gate state for verification and sending   */
+        snapshot_current_gate_state();
+
+        /* the next step is to verfiy the new gate state. */
+        verify_gate_state(gate_is_closed, is_closing_phase);
+
+        mutex_unlock(&gate_state_mutex);
+
+        thread_sleep();
     }
-    DEBUG("\n");
-
-    bool gate_is_closed = GATE_OPEN;
-
-    /* the current phase (OPENING or CLOSING) is defined by the state of the last triggered sensor */
-    bool is_closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
-
-    /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
-    switch (gate_state.sensor_mode) {
-    case EQUAL_SEQUENCE:
-        gate_is_closed = eval_equal_sequence_mode(is_closing_phase);
-        break;
-    case MAJORITY_SEQUENCE:
-        gate_is_closed = eval_majority_sequence_mode(is_closing_phase);
-    default:
-        break;
-    }
-
-    /* If all sensors are in the same state, reset the event tickets to lower values to prevent a overflow in the longterm. */
-    if (gate_state.all_sensor_in_same_state) {
-        reset_sensor_tickets(is_closing_phase);
-    }
-
-    /* save snapshot of current gate state for verification and sending   */
-    snapshot_current_gate_state();
-
-    /* the next step is to verfiy the new gate state. */
-    verify_gate_state(gate_is_closed, is_closing_phase);
-
-    mutex_unlock(&gate_state_mutex);
 
     return NULL;
 }
