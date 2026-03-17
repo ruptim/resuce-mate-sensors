@@ -245,16 +245,18 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     msg_receive(&msg);
     if (msg.type != GNRC_NETERR_MSG_TYPE) {
         printf("error: unexpected message type %" PRIu16 "\n", msg.type);
+        gnrc_pktbuf_release(packet);
         mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
     if (msg.content.value != GNRC_NETERR_SUCCESS) {
         printf("error: unable to send, error: (%" PRIu32 ")\n", msg.content.value);
+        gnrc_pktbuf_release(packet);
         mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
 
-    
+    gnrc_pktbuf_release(packet);
     mutex_unlock(&_lorawan_tx_mutex);
     return 0;
 }
