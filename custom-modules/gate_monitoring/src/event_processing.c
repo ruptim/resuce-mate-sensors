@@ -108,8 +108,8 @@ static bool verify_ticket_sequence(bool closing_phase, gate_state_t *cur_gate_st
  * @brief Evalaute the multi_sensor_mode_t 'MAJORITY_SEQUENCE' requiring a majority
  *        defined by 'majority_threshold' and a valid event sequence.
  * 
- * @retval 1 if the gate is determined to be closed. 
- * @retval 0 if the gate is determined to be open. 
+ * @retval 1 if the gate phase is completed.
+ * @retval 0 if the gate phase isn't completed. 
  */
 static int eval_majority_sequence_mode(bool closing_phase);
 
@@ -117,8 +117,8 @@ static int eval_majority_sequence_mode(bool closing_phase);
  * @brief Evalaute the multi_sensor_mode_t 'EQUAL_SEQUENCE' requiring all values to indicate the 
  *        same gate state and a valid event sequence.
  * 
- * @retval 1 if the gate is determined to be closed. 
- * @retval 0 if the gate is determined to be open. 
+ * @retval 1 if the gate phase is completed.
+ * @retval 0 if the gate phase isn't completed. 
  */
 static int eval_equal_sequence_mode(bool closing_phase);
 
@@ -379,12 +379,13 @@ static int eval_equal_sequence_mode(bool closing_phase)
         gate_state.all_sensor_in_same_state = false;
     }
 
-    return state;
+    return state == closing_phase;
 }
 
 static int eval_majority_sequence_mode(bool closing_phase)
-{
-    int state_counter = 0;
+{   
+    int activated_state_counter = 0;
+    int correct_phase_state_counter = 0;
     uint8_t max_state_counter = NUM_UNIQUE_SENSOR_VALUES;
 
     int phase_comp_state = closing_phase ? REED_SENSOR_ACTIVATED : REED_SENSOR_NOT_ACTIVATED;
@@ -397,14 +398,27 @@ static int eval_majority_sequence_mode(bool closing_phase)
             max_state_counter--;
             continue;
         }
+        if (gate_state.sensor_value_states[i].is_masked) {
+            max_state_counter--;
+            continue;
+        }
 
-        /* a masked or out-of-seq. sensor is treated as not activated */
-        if ((!gate_state.sensor_value_states[i].is_masked && !gate_state.sensor_value_states[i].is_out_of_sequence) &&
-            compare_reed_sensor_value_state(gate_state.sensor_value_states[i], phase_comp_state)) {
-            state_counter++;
+        bool is_in_phase_state = compare_reed_sensor_value_state(gate_state.sensor_value_states[i], phase_comp_state);
+
+        /* an out-of-seq. sensor is treated as not activated */
+        if ((!gate_state.sensor_value_states[i].is_out_of_sequence) &&
+            is_in_phase_state) {
+            /* is in correct phase state and is not out of sequence */
+            activated_state_counter++;
+            correct_phase_state_counter++;
             gate_state.sensor_triggered_states[i] = true;
         }
-        else if (gate_state.sensor_triggered_states[i]) {
+        else if(is_in_phase_state){
+            /* is in correct phase state and but is out of sequence */
+            activated_state_counter++;
+            gate_state.sensor_triggered_states[i] = true;
+        }
+        else {
             gate_state.sensor_triggered_states[i] = false;
         }
 
@@ -412,16 +426,18 @@ static int eval_majority_sequence_mode(bool closing_phase)
     }
 
     /* flag wether all are activate or none is activated */
-    if (state_counter == 0 || state_counter == max_state_counter) {
+    if (activated_state_counter == 0 || activated_state_counter == max_state_counter) {
         gate_state.all_sensor_in_same_state = true;
     }
     else {
         gate_state.all_sensor_in_same_state = false;
     }
 
-    DEBUG("[DEBG] MAJ_SEQ for %s: %d > %d ?\n", phase_return_state == GATE_CLOSED ? "CLOSED" : "OPEN", state_counter, majority_threshold);
+    // TODO: Problem, When 3 is triggered, then 1 and then 3 disabled again, the state is recognized as CLOSED with 1>2 for OPEN.
+
+    DEBUG("[DEBG] MAJ_SEQ for %s: %d > %d ?\n", phase_return_state == GATE_CLOSED ? "CLOSED" : "OPEN", correct_phase_state_counter, majority_threshold);
     /* are the majority of values in their "activated" state? */
-    return (state_counter >= majority_threshold) ? phase_return_state : !phase_return_state;
+    return (correct_phase_state_counter >= majority_threshold); //? phase_return_state : !phase_return_state;
 }
 
 void *evaluate_gate_state(void *arg)
@@ -439,7 +455,7 @@ void *evaluate_gate_state(void *arg)
         }
         DEBUG("\n");
 
-        bool gate_is_closed = GATE_OPEN;
+        bool phase_completed = false;
 
         /* the current phase (OPENING or CLOSING) is defined by the state of the last triggered sensor */
         bool is_closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
@@ -447,10 +463,10 @@ void *evaluate_gate_state(void *arg)
         /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
         switch (gate_state.sensor_mode) {
         case TOTAL_AGREEMENT_PARALLEL:
-            gate_is_closed = eval_equal_sequence_mode(is_closing_phase);
+            phase_completed = eval_equal_sequence_mode(is_closing_phase);
             break;
         case MAJORITY_SEQUENCE:
-            gate_is_closed = eval_majority_sequence_mode(is_closing_phase);
+            phase_completed = eval_majority_sequence_mode(is_closing_phase);
         default:
             break;
         }
@@ -464,7 +480,7 @@ void *evaluate_gate_state(void *arg)
         snapshot_current_gate_state();
 
         /* the next step is to verfiy the new gate state. */
-        verify_gate_state(gate_is_closed, is_closing_phase);
+        verify_gate_state(phase_completed, is_closing_phase);
 
         mutex_unlock(&gate_state_mutex);
 

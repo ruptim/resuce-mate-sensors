@@ -81,25 +81,28 @@ void snapshot_current_gate_state(void)
     gate_state_snapshot_ticket = event_ticket_counter;
 }
 
-void verify_gate_state(bool new_gate_state_value, bool is_closing_phase)
+void verify_gate_state(bool phase_completed, bool is_closing_phase)
 {
      
     /* in the init phase there is no current known gate state to check against  */
     if (init_phase) {
         init_phase = false;
-        new_gate_state_value = GATE_OPEN;
+        phase_completed = GATE_OPEN;
         // return;
     }
-    if (gate_state.gate_closed == new_gate_state_value) {
+    if (gate_state.gate_closed && (!is_closing_phase && phase_completed)) {
         //TODO; handle case when state is the same as before.
+        gate_state.gate_closed = false;
     }
-    else {
-        gate_state.gate_closed = new_gate_state_value;
+    else if (!gate_state.gate_closed && (is_closing_phase && phase_completed))  {
+        gate_state.gate_closed = true;
     }
 
-    DEBUG("[INFO] Phase is %s. New state: %s\n",is_closing_phase ? "CLOSING" : "OPENING",
-                                              new_gate_state_value ? "CLOSED" : "OPEN"
-                                            );
+    DEBUG("[INFO] Phase is %s and is %s, State: %s\n",
+        is_closing_phase ? "CLOSING" : "OPENING",
+        phase_completed ? "COMPLETED" : "NOT COMPLETED",
+        gate_state.gate_closed ? "CLOSED" : "OPEN"
+    );
 
     // gate_state_snapshot.
 
