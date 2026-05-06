@@ -12,9 +12,9 @@
 *     "ib": SENSOR_ENCODE_SENSOR_ID_BITS,
 *     "vb": SENSOR_ENCODE_VALUE_ID_BITS,
 *     "i": [
-*         ENCODE_SENSOR_TYPE_ID(type_1,id_1),
-*         ...,
-*         ENCODE_SENSOR_TYPE_ID(type_n,id_n),
+*         ENCODE_SENSOR_TYPE_IDS(sensor_1,type_1,value_id_1),
+          ...,
+*         ENCODE_SENSOR_TYPE_IDS(sensor_n,type_n,value_id_n),
 *     ],
 *     "v": [
 *         <sensor_value_1,>
