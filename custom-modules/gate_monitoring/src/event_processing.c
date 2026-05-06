@@ -299,7 +299,7 @@ bool verify_ticket_sequence(bool closing_phase, gate_state_t *cur_gate_state)
 
     while (i != end_idx) {
         /* 1. Skip masked sensors and sensors already flagged as out-of-sequence */
-        if ((gate_state.sensor_value_states[i].type == SENSOR_TYPE_ID_DWAS509) || (cur_gate_state->sensor_value_states[i].is_masked || cur_gate_state->sensor_value_states[i].is_out_of_sequence)) {
+        if ((cur_gate_state->sensor_value_states[i].type == SENSOR_TYPE_ID_DWAS509) || (cur_gate_state->sensor_value_states[i].is_masked || cur_gate_state->sensor_value_states[i].is_out_of_sequence)) {
             i += step;
             continue;
         }
