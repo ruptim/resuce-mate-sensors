@@ -61,7 +61,7 @@ void init_gate_state(void)
     gate_state.gate_closed = GATE_OPEN;
 
     /* trigger all sensors once to determine current status */
-    for (size_t i = 0; i < NUM_UNIQUE_SENSOR_VALUES; i++) {
+    for (int8_t i = NUM_UNIQUE_SENSOR_VALUES-1; i >= 0; i--) {
         const sensor_type_t sensor_type = DECODE_SENSOR_TYPE(alarm_cb_args[i].msg.type);
         const sensor_id_t sensor_id = DECODE_SENSOR_ID(alarm_cb_args[i].msg.type);
         const value_id_t value_id = DECODE_VALUE_ID(alarm_cb_args[i].msg.type);
