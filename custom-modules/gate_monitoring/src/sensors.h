@@ -5,20 +5,27 @@
 #include "reed_sensor_driver.h"
 #include "dwas509.h"
 
-#define SENSOR_TYPE_ID_DWAS509        1
-#define SENSOR_TYPE_ID_REED_SWITCH    2
-#define SENSOR_TYPE_ID_REED_SWITCH_NC 3
-#define SENSOR_TYPE_ID_REED_SWITCH_NO 4
-
 #define REED_SENSOR_DEBOUNCE_MS       60
 #define REED_SENSOR_PIN_STATE_OPEN    0
 #define REED_SENSOR_PIN_STATE_CLOSED  1
 #define REED_SENSOR_NOT_ACTIVATED     0
 #define REED_SENSOR_ACTIVATED         1
 
+
+typedef enum  {
+
+    SENSOR_TYPE_ID_DWAS509        = 1,
+    SENSOR_TYPE_ID_REED_SWITCH    = 2,
+    SENSOR_TYPE_ID_REED_SWITCH_NC = 3,
+    SENSOR_TYPE_ID_REED_SWITCH_NO = 4
+
+} sensor_type_t;
+
+
+
 typedef enum {
-    EQUAL_PARALLEL = 0b000,    /* equal priority, order doesn't matter */
-    EQUAL_SEQUENCE = 0b001,     /* equal priority, order matters */
+    TOTAL_AGREEMENT_PARALLEL = 0b000,    /* equal priority, order doesn't matter */
+    TOTAL_AGREEMENT_SEQUENCE = 0b001,     /* equal priority, order matters */
     MAJORITY_PARALLEL = 0b010, /* majority voting, no order verification */
     MAJORITY_SEQUENCE = 0b011,  /* majority voting, verify order */
     WEIGHTED_PARALLEL = 0b100, /* different weights/priorities, order doesn't matter */
@@ -78,17 +85,17 @@ typedef enum {
  * @brief Select the correct size and define uint type 'sensor_type_t' based on SENSOR_ENCODE_TYPE_BITS 
  * 
  */
-#if SENSOR_ENCODE_TYPE_BITS <= 8
-    typedef uint8_t sensor_type_t;
-#elif SENSOR_ENCODE_TYPE_BITS <= 16
-    typedef uint16_t sensor_type_t;
-#elif SENSOR_ENCODE_TYPE_BITS <= 32
-   typedef uint32_t sensor_type_t;
-#elif SENSOR_ENCODE_TYPE_BITS <= 64
-    typedef uint64_t sensor_type_t;
-#else
-    #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
-#endif
+// #if SENSOR_ENCODE_TYPE_BITS <= 8
+//     typedef uint8_t sensor_type_t;
+// #elif SENSOR_ENCODE_TYPE_BITS <= 16
+//     typedef uint16_t sensor_type_t;
+// #elif SENSOR_ENCODE_TYPE_BITS <= 32
+//    typedef uint32_t sensor_type_t;
+// #elif SENSOR_ENCODE_TYPE_BITS <= 64
+//     typedef uint64_t sensor_type_t;
+// #else
+//     #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
+// #endif
 
 
 /**

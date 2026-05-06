@@ -243,6 +243,9 @@ void *await_sensor_events(void *arg)
             new_sensor_event(sensor_id, sensor_type, value_id, no_val);
 
             break;
+        case SENSOR_TYPE_ID_REED_SWITCH:
+            // not used directly here
+            break;
         }
     }
 }
@@ -431,7 +434,7 @@ void *evaluate_gate_state(void *arg)
 
         /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
         switch (gate_state.sensor_mode) {
-        case EQUAL_SEQUENCE:
+        case TOTAL_AGREEMENT_PARALLEL:
             gate_is_closed = eval_equal_sequence_mode(is_closing_phase);
             break;
         case MAJORITY_SEQUENCE:

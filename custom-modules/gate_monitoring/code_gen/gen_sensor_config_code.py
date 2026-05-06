@@ -36,6 +36,7 @@ parser.add_argument(
 
 class SensorTypeID(Enum):
     DWAS = "SENSOR_TYPE_ID_DWAS509"
+    REED = "SENSOR_TYPE_ID_REED_SWITCH"
     REED_NC = "SENSOR_TYPE_ID_REED_SWITCH_NC"
     REED_NO = "SENSOR_TYPE_ID_REED_SWITCH_NO"
 
