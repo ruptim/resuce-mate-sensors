@@ -345,17 +345,29 @@ static int eval_equal_sequence_mode(bool closing_phase)
             max_state_counter--;
             continue;
         }
-        /* a masked sensor is treated as not activated */
+        /* continue if value is masked (flagged for not tr) */
+        if (gate_state.sensor_value_states[i].is_masked) {
+            max_state_counter--;
+            continue;
+        }
+
+
+        
+
+        bool is_triggered = compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED);
+        /* a masked or out-of-sequence sensor is treated as not activated */
         if (!gate_state.sensor_value_states[i].is_masked && !gate_state.sensor_value_states[i].is_out_of_sequence &&
-            compare_reed_sensor_value_state(gate_state.sensor_value_states[i], REED_SENSOR_ACTIVATED)) {
+            is_triggered) {
             state &= GATE_CLOSED;
             gate_state.sensor_triggered_states[i] = true;
-            state_counter += 1;
+            state_counter++; 
         }
         else {
             state = GATE_OPEN;
             gate_state.sensor_triggered_states[i] = false;
         }
+
+        
         gate_state.sensor_value_states[i].event_counter = 0;
     }
 
