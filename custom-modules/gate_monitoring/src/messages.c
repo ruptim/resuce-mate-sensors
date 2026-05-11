@@ -192,9 +192,9 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
     
     send_lorawan_packet(cbor_buf, cbor_buf_size);
 
-
+    DEBUG("=> Msg Seq. number: %d. Size of buffer: %d, size of data: %d\n",seq_num,CBOR_BUFFER_SIZE,cbor_buf_size_needed);
     for (size_t i = 0; i < cbor_buf_size; i++) {
-        printf("%02X", cbor_buf[i]);
+        DEBUG("%02X", cbor_buf[i]);
     }
     DEBUG("\n");
 

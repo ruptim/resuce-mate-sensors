@@ -12,6 +12,7 @@
 #include "net/gnrc/netreg.h"
 #include "net/gnrc/pkt.h"
 #include "net/gnrc/netif/hdr.h"
+#include "net/gnrc/pktdump.h"
 
 #include "od.h"
 #include "msg.h"
@@ -37,7 +38,7 @@ static char _rx_thread_stack[THREAD_STACKSIZE_DEFAULT];
 static msg_t _rx_msg_queue[QUEUE_SIZE];
 
 
-static mutex_t _lorawan_tx_mutex = MUTEX_INIT;
+// static mutex_t _lorawan_tx_mutex = MUTEX_INIT;
 
 
 bool lorawan_connected = false;
@@ -90,7 +91,6 @@ static netif_t *_find_lorawan_network_interface(void)
 static void _join_lorawan_network(const netif_t *netif)
 {
     assert(netif != NULL);
-
     netopt_enable_t status;
     uint8_t data_rate = 5;
 
@@ -175,11 +175,17 @@ int init_lorawan_stack(void){
         puts("Failed to create reception thread");
         return -1;
     }
+   
 
     /* register thread to receive LoRaWAN packets */
     entry =  (gnrc_netreg_entry_t) GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
                                                     rx_pid);
     gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &entry);
+
+    /* register thread to receive LoRaWAN packets */
+    gnrc_netreg_entry_t dump =  (gnrc_netreg_entry_t) GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
+                                                    gnrc_pktdump_pid);
+    gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &dump);
 
 
 
@@ -231,13 +237,13 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     netif_header = (gnrc_netif_hdr_t *)header->data;
     netif_header->flags = 0x00;
 
-    mutex_lock(&_lorawan_tx_mutex);
+    // mutex_lock(&_lorawan_tx_mutex);
 
     result = gnrc_netif_send(container_of(lorwan_netif, gnrc_netif_t, netif), packet);
     if (result < 1) {
         printf("error: unable to send\n");
         gnrc_pktbuf_release(packet);
-        mutex_unlock(&_lorawan_tx_mutex);
+        // mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
 
@@ -245,18 +251,18 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     msg_receive(&msg);
     if (msg.type != GNRC_NETERR_MSG_TYPE) {
         printf("error: unexpected message type %" PRIu16 "\n", msg.type);
-        gnrc_pktbuf_release(packet);
-        mutex_unlock(&_lorawan_tx_mutex);
+        // gnrc_pktbuf_release(packet);
+        // mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
     if (msg.content.value != GNRC_NETERR_SUCCESS) {
         printf("error: unable to send, error: (%" PRIu32 ")\n", msg.content.value);
-        gnrc_pktbuf_release(packet);
-        mutex_unlock(&_lorawan_tx_mutex);
+        // gnrc_pktbuf_release(packet);
+        // mutex_unlock(&_lorawan_tx_mutex);
         return -1;
     }
 
-    gnrc_pktbuf_release(packet);
-    mutex_unlock(&_lorawan_tx_mutex);
+    // gnrc_pktbuf_release(packet);
+    // mutex_unlock(&_lorawan_tx_mutex);
     return 0;
 }
