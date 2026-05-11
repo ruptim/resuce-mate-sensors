@@ -23,6 +23,11 @@ USEMODULE += od
 USEMODULE += gnrc_lorawan
 
 
+USEMODULE += gnrc_pktdump
+USEMODULE += gnrc_txtsnd
+USEMODULE += shell
+USEMODULE += shell_cmds_default
+
 
 USEMODULE += sx127x
 
