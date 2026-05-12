@@ -57,7 +57,6 @@ event_ticket_t get_snapshot_event_ticket(void)
 void init_gate_state(void)
 {
     init_phase = true;
-    gate_state.sensor_mode = ACTIVE_MULTI_SENSOR_MODE;
     gate_state.gate_closed = GATE_OPEN;
 
     /* trigger all sensors once to determine current status */

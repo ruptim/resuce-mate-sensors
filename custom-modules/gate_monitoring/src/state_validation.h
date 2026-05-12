@@ -37,7 +37,6 @@ typedef struct {
 typedef struct {
     bool gate_closed;
     sensor_value_state_t sensor_value_states[NUM_UNIQUE_SENSOR_VALUES];
-    multi_sensor_mode_t sensor_mode;
     bool sensor_triggered_states[NUM_UNIQUE_SENSOR_VALUES];
     value_id_t latest_value_id;
     bool all_sensor_in_same_state;

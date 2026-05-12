@@ -5,42 +5,35 @@
 #include "reed_sensor_driver.h"
 #include "dwas509.h"
 
-#define REED_SENSOR_DEBOUNCE_MS       60
-#define REED_SENSOR_PIN_STATE_OPEN    0
-#define REED_SENSOR_PIN_STATE_CLOSED  1
-#define REED_SENSOR_NOT_ACTIVATED     0
-#define REED_SENSOR_ACTIVATED         1
+#define REED_SENSOR_DEBOUNCE_MS      60
+#define REED_SENSOR_PIN_STATE_OPEN   0
+#define REED_SENSOR_PIN_STATE_CLOSED 1
+#define REED_SENSOR_NOT_ACTIVATED    0
+#define REED_SENSOR_ACTIVATED        1
 
+typedef enum {
 
-typedef enum  {
-
-    SENSOR_TYPE_ID_DWAS509        = 1,
-    SENSOR_TYPE_ID_REED_SWITCH    = 2,
+    SENSOR_TYPE_ID_DWAS509 = 1,
+    SENSOR_TYPE_ID_REED_SWITCH = 2,
     SENSOR_TYPE_ID_REED_SWITCH_NC = 3,
     SENSOR_TYPE_ID_REED_SWITCH_NO = 4
 
 } sensor_type_t;
 
 
+#define TOTAL_AGREEMENT_PARALLEL                        0b000 /* equal priority, order doesn't matter */
+#define TOTAL_AGREEMENT_SEQUENCE                        0b001 /* equal priority, order matters */
+#define MAJORITY_PARALLEL                               0b010 /* majority voting, no order verification */
+#define MAJORITY_SEQUENCE                               0b011 /* majority voting, verify order */
+#define WEIGHTED_PARALLEL                               0b100 /* different weights/priorities, order doesn't matter */
+#define WEIGHTED_SEQUENCE                               0b101 /* different weights/priorities, order matters */
 
-typedef enum {
-    TOTAL_AGREEMENT_PARALLEL = 0b000,    /* equal priority, order doesn't matter */
-    TOTAL_AGREEMENT_SEQUENCE = 0b001,     /* equal priority, order matters */
-    MAJORITY_PARALLEL = 0b010, /* majority voting, no order verification */
-    MAJORITY_SEQUENCE = 0b011,  /* majority voting, verify order */
-    WEIGHTED_PARALLEL = 0b100, /* different weights/priorities, order doesn't matter */
-    WEIGHTED_SEQUENCE = 0b101,  /* different weights/priorities, order matters */
-    
-
-} multi_sensor_mode_t;
-
-
-#define SENSOR_ENCODE_SENSOR_ID_BITS 3
-#define SENSOR_ENCODE_TYPE_BITS 4
-#define SENSOR_ENCODE_VALUE_ID_BITS 4
-#define SENSOR_ENCODE_SENSOR_TYPE_MASK ((0x1 << SENSOR_ENCODE_TYPE_BITS)-1)
-#define SENSOR_ENCODE_VALUE_ID_MASK ((0x1 << SENSOR_ENCODE_VALUE_ID_BITS)-1)
-#define ENCODE_SENSOR_TYPE_IDS_BITS (SENSOR_ENCODE_TYPE_BITS+SENSOR_ENCODE_SENSOR_ID_BITS+SENSOR_ENCODE_VALUE_ID_BITS)
+#define SENSOR_ENCODE_SENSOR_ID_BITS                      3
+#define SENSOR_ENCODE_TYPE_BITS                           4
+#define SENSOR_ENCODE_VALUE_ID_BITS                       4
+#define SENSOR_ENCODE_SENSOR_TYPE_MASK                    ((0x1 << SENSOR_ENCODE_TYPE_BITS) - 1)
+#define SENSOR_ENCODE_VALUE_ID_MASK                       ((0x1 << SENSOR_ENCODE_VALUE_ID_BITS) - 1)
+#define ENCODE_SENSOR_TYPE_IDS_BITS                       (SENSOR_ENCODE_TYPE_BITS + SENSOR_ENCODE_SENSOR_ID_BITS + SENSOR_ENCODE_VALUE_ID_BITS)
 
 /**
 * @brief Macro to encode sensor id, type and value id in a integer whose size 
@@ -52,33 +45,30 @@ typedef enum {
 * |   Sensor ID (X bits)     |   Sensor Type (X bits)   |   Value ID (X bits)   |
 * -------------------------------------------------------------------------------
 */
-#define ENCODE_SENSOR_TYPE_IDS(sensor_id, type, value_id) (( (sensor_id) << SENSOR_ENCODE_TYPE_BITS | (type) ) << SENSOR_ENCODE_VALUE_ID_BITS | (value_id))
+#define ENCODE_SENSOR_TYPE_IDS(sensor_id, type, value_id) (((sensor_id) << SENSOR_ENCODE_TYPE_BITS | (type)) << SENSOR_ENCODE_VALUE_ID_BITS | (value_id))
 
 /**
  * @brief Macros to decode the sensor id, type or value id froma given integer.
  * 
  */
-#define DECODE_SENSOR_ID(type_id_value) (type_id_value >> (SENSOR_ENCODE_TYPE_BITS +SENSOR_ENCODE_VALUE_ID_BITS))
-#define DECODE_SENSOR_TYPE(type_id_value) ((type_id_value >> SENSOR_ENCODE_VALUE_ID_BITS) & SENSOR_ENCODE_SENSOR_TYPE_MASK)
-#define DECODE_VALUE_ID(type_id_value) (type_id_value & SENSOR_ENCODE_VALUE_ID_MASK)
-
-
-
+#define DECODE_SENSOR_ID(type_id_value)                   (type_id_value >> (SENSOR_ENCODE_TYPE_BITS + SENSOR_ENCODE_VALUE_ID_BITS))
+#define DECODE_SENSOR_TYPE(type_id_value)                 ((type_id_value >> SENSOR_ENCODE_VALUE_ID_BITS) & SENSOR_ENCODE_SENSOR_TYPE_MASK)
+#define DECODE_VALUE_ID(type_id_value)                    (type_id_value & SENSOR_ENCODE_VALUE_ID_MASK)
 
 /**
  * @brief Select the correct size and define uint type 'sensor_id_t' based onSENSOR_ENCODE_SENSOR_ID_BITS 
  * 
  */
 #if SENSOR_ENCODE_SENSOR_ID_BITS <= 8
-    typedef uint8_t sensor_id_t;
+typedef uint8_t sensor_id_t;
 #elif SENSOR_ENCODE_SENSOR_ID_BITS <= 16
-    typedef uint16_t sensor_id_t;
+typedef uint16_t sensor_id_t;
 #elif SENSOR_ENCODE_SENSOR_ID_BITS <= 32
-   typedef uint32_t sensor_id_t;
+typedef uint32_t sensor_id_t;
 #elif SENSOR_ENCODE_SENSOR_ID_BITS <= 64
-    typedef uint64_t sensor_id_t;
+typedef uint64_t sensor_id_t;
 #else
-    #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
+#  error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
 #endif
 
 /**
@@ -97,24 +87,21 @@ typedef enum {
 //     #error "SENSOR_ENCODE_TYPE_BITS exceeds supported maximum."
 // #endif
 
-
 /**
  * @brief Select the correct size and define uint type 'value_id_t' based on SENSOR_ENCODE_VALUE_ID_BITS 
  * 
  */
 #if SENSOR_ENCODE_VALUE_ID_BITS <= 8
-    typedef uint8_t value_id_t;
+typedef uint8_t value_id_t;
 #elif SENSOR_ENCODE_VALUE_ID_BITS <= 16
-    typedef uint16_t value_id_t;
+typedef uint16_t value_id_t;
 #elif SENSOR_ENCODE_VALUE_ID_BITS <= 32
-   typedef uint32_t value_id_t;
+typedef uint32_t value_id_t;
 #elif SENSOR_ENCODE_VALUE_ID_BITS <= 64
-    typedef uint64_t value_id_t;
+typedef uint64_t value_id_t;
 #else
-    #error "SENSOR_ENCODE_VALUE_ID_BITS exceeds supported maximum."
+#  error "SENSOR_ENCODE_VALUE_ID_BITS exceeds supported maximum."
 #endif
-
-
 
 typedef union {
     reed_sensor_driver_t reed_sensor;

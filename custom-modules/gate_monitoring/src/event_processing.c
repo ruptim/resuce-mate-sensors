@@ -107,20 +107,22 @@ static bool verify_ticket_sequence(bool closing_phase, gate_state_t *cur_gate_st
 /**
  * @brief Evalaute the multi_sensor_mode_t 'MAJORITY_SEQUENCE' requiring a majority
  *        defined by 'majority_threshold' and a valid event sequence.
+ *        Function maybe unused, depending on value of `ACTIVE_MULTI_SENSOR_MODE`.
  * 
  * @retval 1 if the gate phase is completed.
  * @retval 0 if the gate phase isn't completed. 
  */
-static int eval_majority_sequence_mode(bool closing_phase);
+__attribute__((unused)) static int eval_majority_sequence_mode(bool closing_phase);
 
 /**
  * @brief Evalaute the multi_sensor_mode_t 'EQUAL_SEQUENCE' requiring all values to indicate the 
  *        same gate state and a valid event sequence.
+ *        Function maybe unused, depending on value of `ACTIVE_MULTI_SENSOR_MODE`.
  * 
  * @retval 1 if the gate phase is completed.
  * @retval 0 if the gate phase isn't completed. 
  */
-static int eval_equal_sequence_mode(bool closing_phase);
+__attribute__((unused)) static int eval_equal_sequence_mode(bool closing_phase);
 
 /* ------------ function definitions ---------------- */
 
@@ -332,6 +334,7 @@ bool verify_ticket_sequence(bool closing_phase, gate_state_t *cur_gate_state)
     return seq_valid;
 }
 
+
 static int eval_equal_sequence_mode(bool closing_phase)
 {
     bool state = GATE_CLOSED;
@@ -381,6 +384,7 @@ static int eval_equal_sequence_mode(bool closing_phase)
 
     return state == closing_phase;
 }
+
 
 static int eval_majority_sequence_mode(bool closing_phase)
 {   
@@ -461,15 +465,15 @@ void *evaluate_gate_state(void *arg)
         bool is_closing_phase = compare_reed_sensor_value_state(gate_state.sensor_value_states[gate_state.latest_value_id], REED_SENSOR_ACTIVATED);
 
         /* sensor check for configuration of multiple equivalent (sequence) reed sensors */
-        switch (gate_state.sensor_mode) {
-        case TOTAL_AGREEMENT_PARALLEL:
+        #if   ACTIVE_MULTI_SENSOR_MODE == TOTAL_AGREEMENT_PARALLEL
             phase_completed = eval_equal_sequence_mode(is_closing_phase);
-            break;
-        case MAJORITY_SEQUENCE:
+        #elif ACTIVE_MULTI_SENSOR_MODE == MAJORITY_SEQUENCE
             phase_completed = eval_majority_sequence_mode(is_closing_phase);
-        default:
-            break;
-        }
+        #else 
+            #error "Selected multisensor mode (ACTIVE_MULTI_SENSOR_MODE) is not supported!"
+        #endif
+
+        
 
         /* If all sensors are in the same state, reset the event tickets to lower values to prevent a overflow in the longterm. */
         if (gate_state.all_sensor_in_same_state) {
