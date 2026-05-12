@@ -37,7 +37,27 @@ VERBOSE_ASSERT ?= 1
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 1
 
-CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=false
+CFLAGS+= -DGATE_MONITORING_USE_LORAWAN=true
+CFLAGS+= -DCONFIG_GNRC_PKTBUF_SIZE=512
+
+# [from gnrc/lorwan example]
+
+# For TTN, It's necessary to set the RX2 DR to 3 in EU_868 region
+CFLAGS += -DCONFIG_LORAMAC_DEFAULT_RX2_DR_3
+
+# For FIT-IoT Lab usage. Use the highest DR since gateway is nearby.
+# If uncommented, the default value (DR0) is used.
+# Note this value is also used for the OTAA.
+CFLAGS += -DCONFIG_LORAMAC_DEFAULT_DR_3 # max size of cbor buffer is 114 bytes, DR3 is 1760 bits/s
+
+# Set default messages to unconfirmable
+CFLAGS += -DCONFIG_LORAMAC_DEFAULT_TX_MODE_UNCNF
+
+# Set region
+CFLAGS += -DCONFIG_LORAMAC_REGION_EU_868
+
+
+
 
 USEMODULE += gate_monitoring
 
