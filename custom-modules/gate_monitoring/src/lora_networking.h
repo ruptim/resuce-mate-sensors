@@ -14,12 +14,11 @@
 int init_lorawan_stack(void);
 
 /**
- * @brief   Send a LoRaWAN packet with temperature data.
- * @param   netif       Pointer to the LoRaWAN network interface.
+ * @brief   Notify the sending thread to send the requested data.
  * @param   cbor_buf    Pointer to the cbor data to be sent.
  * @param   buf_size    Length of the cbor data to be sent.
  *
  * @retval   0 on success
  * @retval  -1 on failure
  */
-int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size);
+int notify_tx_thread(uint8_t *cbor_buf, size_t buf_size);
