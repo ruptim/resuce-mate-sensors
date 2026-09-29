@@ -1,6 +1,8 @@
 #pragma once
 
 #include "stdio.h"
+#include "sensors.h"
+#include "sensor_config.h"
 
 /** 
 * @brief CBOR message structure:
