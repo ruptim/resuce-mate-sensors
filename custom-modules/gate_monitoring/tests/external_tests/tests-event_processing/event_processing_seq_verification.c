@@ -7,47 +7,9 @@
 #include "../../../src/event_processing.c"
 
 static void set_up(void)
-{
-    // state_opening = (gate_state_t) {
-    // .gate_closed = false,
-    // . sensor_value_states = {
-    //     (sensor_value_state_t){
-    //         .type = SENSOR_TYPE_ID_REED_SWITCH_NO,
-    //         .sensor_id = 0,
-    //         .value_id = 0,
-    //         .value = 1,
-    //         .event_counter = 1,
-    //         .latest_arrive_ticket =  1,
-    //         .is_masked = false,
-    //         .is_out_of_sequence = false,
-    //     },
-    //     (sensor_value_state_t){
-    //         .type = SENSOR_TYPE_ID_REED_SWITCH_NO,
-    //         .sensor_id = 1,
-    //         .value_id = 1,
-    //         .value = 1,
-    //         .event_counter = 1,
-    //         .latest_arrive_ticket =  2,
-    //         .is_masked = false,
-    //         .is_out_of_sequence = false,
-    //     },
-    //     (sensor_value_state_t){
-    //         .type = SENSOR_TYPE_ID_REED_SWITCH_NO,
-    //         .sensor_id = 2,
-    //         .value_id = 2,
-    //         .value = 1,
-    //         .event_counter = 1,
-    //         .latest_arrive_ticket =  3,
-    //         .is_masked = false,
-    //         .is_out_of_sequence = false,
-    //     }
-    // },
-
-    // .sensor_mode = MAJORITY_SEQUENCE,
-    // .sensor_triggered_states = {false, false, false},
-    // .latest_value_id = 2,
-
-    // };
+{   
+    // #undef ACTIVE_MULTI_SENSOR_MODE
+    // #define ACTIVE_MULTI_SENSOR_MODE MAJORITY_SEQUENCE_2
 }
 
 static void tear_down(void)

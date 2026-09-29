@@ -47,7 +47,6 @@ static gate_state_t sc1_state_closing_valid = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 2,
 
@@ -90,7 +89,6 @@ static gate_state_t sc2_state_opening_valid = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 0,
 
@@ -133,7 +131,6 @@ static gate_state_t sc3a_state_closing_valid_first_masked = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 2,
 
@@ -176,7 +173,6 @@ static gate_state_t sc3b_state_closing_valid_middle_masked = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 2,
 
@@ -220,7 +216,6 @@ static gate_state_t sc3c_state_closing_valid_last_masked = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 2,
 
@@ -263,7 +258,6 @@ static gate_state_t sc4a_state_opening_valid_last_masked = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 0,
 
@@ -309,7 +303,6 @@ static gate_state_t sc5a_state_closing_invalid_first_triggered_last = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 0,
 };
@@ -353,7 +346,6 @@ static gate_state_t sc5b_state_closing_invalid_first_triggered_second = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 0,
 };
@@ -397,7 +389,6 @@ static gate_state_t sc5c_state_closing_invalid_middle_out_of_seq = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 2,
 };
@@ -442,8 +433,55 @@ static gate_state_t sc6_state_partial_opening_closing = {
             .is_out_of_sequence = false,
         } },
 
-    .sensor_mode = MAJORITY_SEQUENCE,
     .sensor_triggered_states = { false, false, false },
     .latest_value_id = 1,
 };
+
+
+/* 
+* Scenario 7: Invalid order and phase switch. 
+* Trigger order: S3-ON, S1-ON, S3-OFF
+* Step 1: S3-ON  -> Phase: closing, State: open (1>2 for CLOSED), valid
+* Step 2: S1-ON  -> Phase: closing, State: open (1>2 for CLOSED), S3 out-of-seq.
+* Step 3: S3-OFF -> Phase: opening, State: open (1>2 for OPEN)  , still open
+*/
+static gate_state_t sc7_state_partial_opening_closing = {
+    .gate_closed = true,
+    .sensor_value_states = {
+        (sensor_value_state_t){
+            .type = SENSOR_TYPE_ID_REED_SWITCH_NO,
+            .sensor_id = 0,
+            .value_id = 0,
+            .value = 1,
+            .event_counter = 1,
+            .latest_arrive_ticket = 1, /* <-- */
+            .is_masked = false,
+            .is_out_of_sequence = false,
+        },
+        (sensor_value_state_t){
+            .type = SENSOR_TYPE_ID_REED_SWITCH_NO,
+            .sensor_id = 1,
+            .value_id = 1,
+            .value = 0,
+            .event_counter = 0,
+            .latest_arrive_ticket = 5, /* <-- set to 6 after first ASSERT*/
+            .is_masked = false,
+            .is_out_of_sequence = false,
+        },
+        (sensor_value_state_t){
+            .type = SENSOR_TYPE_ID_REED_SWITCH_NO,
+            .sensor_id = 2,
+            .value_id = 2,
+            .value = 0,
+            .event_counter = 0,
+            .latest_arrive_ticket = 4, /* <-- */
+            .is_masked = false,
+            .is_out_of_sequence = false,
+        } },
+
+    .sensor_triggered_states = { false, false, false },
+    .latest_value_id = 1,
+};
+
+
 
