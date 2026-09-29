@@ -15,7 +15,6 @@
 
 static uint8_t cbor_buf[CBOR_BUFFER_SIZE] = { 0 };
 static uint16_t cbor_buf_size = CBOR_BUFFER_SIZE;
-// static uint8_t *cbor_buf;
 
 static int seq_num = 0;
 
@@ -190,7 +189,7 @@ void send_data(const gate_state_t state, const uint32_t timestamp)
     encode_data(cbor_buf, cbor_buf_size, state, seq_num, timestamp);
 
     
-    send_lorawan_packet(cbor_buf, cbor_buf_size);
+    notify_tx_thread(cbor_buf, CBOR_BUFFER_SIZE);
 
     DEBUG("[DEBG] Msg Seq. number: %d. Size of buffer: %d, size of data: %d\n",seq_num,CBOR_BUFFER_SIZE,cbor_buf_size_needed);
     for (size_t i = 0; i < cbor_buf_size; i++) {

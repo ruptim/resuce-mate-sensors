@@ -4,6 +4,8 @@
 */
 
 #include "lora_networking.h"
+#include "cbor_encoding.h"
+#include "lw.h"
 
 #include "net/netdev.h"
 #include "net/netif.h"
@@ -18,13 +20,22 @@
 #include "msg.h"
 #include "thread.h"
 #include "mutex.h"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
+#define LOG_LEVEL   LOG_INFO
+#include "log.h"
 
+#define _LOGDBG(...) LOG_DEBUG("[LoRaWAN]: " __VA_ARGS__)
+#define _LOGINF(...) LOG_INFO("[LoRaWAN]: " __VA_ARGS__)
+
+#define SILENOS_DISPATCH_MSG 0x1
 
 /* pointer of the LoRaWan network interface */
 static netif_t * lorwan_netif;
 
-static gnrc_netreg_entry_t entry;
+// static gnrc_netreg_entry_t entry;
 
 static kernel_pid_t rx_pid;
 
@@ -38,8 +49,17 @@ static char _rx_thread_stack[THREAD_STACKSIZE_DEFAULT];
 static msg_t _rx_msg_queue[QUEUE_SIZE];
 
 
-// static mutex_t _lorawan_tx_mutex = MUTEX_INIT;
+static mutex_t _lorawan_tx_mutex = MUTEX_INIT;
 
+/* Stack for sending thread */
+static char _tx_thread_stack[THREAD_STACKSIZE_DEFAULT];
+
+/* Message queue for sending thread */
+static msg_t _tx_msg_queue[QUEUE_SIZE];
+
+static kernel_pid_t tx_pid;
+
+static uint8_t data_buffer[CBOR_BUFFER_SIZE];
 
 bool lorawan_connected = false;
 
@@ -70,6 +90,24 @@ static void _print_received_packet(gnrc_pktsnip_t *pkt);
  * @param   arg  not used.
  */
 static void *_rx_thread(void *arg);
+
+/**
+ * @brief   Send a LoRaWAN packet with the cbor data.
+ * @param   netif       Pointer to the LoRaWAN network interface.
+ * @param   cbor_buf    Pointer to the cbor data to be sent.
+ * @param   buf_size    Length of the cbor data to be sent.
+ *
+ * @retval   0 on success
+ * @retval  -1 on failure
+ */
+int _send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size);
+
+
+/**
+ * @brief   Routine for packet sending thread.
+ * @param   arg  not used.
+ */
+static void *_tx_thread(void *arg);
 
 static netif_t *_find_lorawan_network_interface(void)
 {
@@ -162,7 +200,8 @@ static void *_rx_thread(void *arg)
 
 
 int init_lorawan_stack(void){
-
+    (void ) _rx_thread;
+    (void ) _rx_thread_stack;
 
     lorwan_netif = _find_lorawan_network_interface();
 
@@ -170,33 +209,49 @@ int init_lorawan_stack(void){
                                     THREAD_PRIORITY_MAIN - 1,
                                     THREAD_CREATE_STACKTEST, _rx_thread, NULL,
                                     "lorawan_rx");
-
+    
     if (-EINVAL == rx_pid) {
         puts("Failed to create reception thread");
         return -1;
     }
-   
 
+   
     /* register thread to receive LoRaWAN packets */
     entry =  (gnrc_netreg_entry_t) GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
                                                     rx_pid);
     gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &entry);
 
-    /* register thread to receive LoRaWAN packets */
-    gnrc_netreg_entry_t dump =  (gnrc_netreg_entry_t) GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
-                                                    gnrc_pktdump_pid);
-    gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &dump);
+    pid_t tx_pid = thread_create(_tx_thread_stack, sizeof(_tx_thread_stack),
+                                    THREAD_PRIORITY_MAIN - 1,
+                                    THREAD_CREATE_STACKTEST, _tx_thread, NULL,
+                                    "lorawan_tx");
+    if (-EINVAL == tx_pid) {
+        puts("Failed to create sending thread");
+        return -1;
+    }
 
-
-
-                                    
     _join_lorawan_network(lorwan_netif);
 
     return 0;
 }
 
-int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
+
+int notify_tx_thread(uint8_t *cbor_buf, size_t buf_size){
+     
+    mutex_lock(&_lorawan_tx_mutex);
+
+    memcpy(data_buffer, cbor_buf, buf_size);
+    msg_t msg;
+    msg.type = SILENOS_DISPATCH_MSG;
+    msg_send(&msg,tx_pid);
+
+    mutex_unlock(&_lorawan_tx_mutex);
+    return 0;
+}
+
+int _send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
 {
+
 
     if(!lorawan_connected){
         puts("[INFO] No LoRaWan connection: can't send data!");
@@ -206,63 +261,95 @@ int send_lorawan_packet(uint8_t *cbor_buf, size_t buf_size)
     assert(lorwan_netif != NULL);
     assert(cbor_buf != NULL);
 
-    int result;
+     int result;
     gnrc_pktsnip_t *packet;
     gnrc_pktsnip_t *header;
     gnrc_netif_hdr_t *netif_header;
     uint8_t address = 1;
     msg_t msg;
-    
 
+    _LOGDBG("Package size: %d\n", buf_size);
     packet = gnrc_pktbuf_add(NULL, cbor_buf, buf_size, GNRC_NETTYPE_UNDEF);
     if (packet == NULL) {
-        puts("Failed to create packet");
+        _LOGDBG("Failed to create packet.");
         return -1;
     }
+    printf("==> Post Packet\n");
+    gnrc_pktbuf_stats();
 
     if (gnrc_neterr_reg(packet) != 0) {
-        puts("Failed to register for error reporting");
+        _LOGDBG("Failed to register for error reporting.");
         gnrc_pktbuf_release(packet);
-        return -1;
+        return -2;
     }
 
     header = gnrc_netif_hdr_build(NULL, 0, &address, sizeof(address));
     if (header == NULL) {
-        puts("Failed to create header");
+        _LOGDBG("Failed to create header.");
         gnrc_pktbuf_release(packet);
-        return -1;
+        return -3;
     }
 
     packet = gnrc_pkt_prepend(packet, header);
     netif_header = (gnrc_netif_hdr_t *)header->data;
     netif_header->flags = 0x00;
 
-    // mutex_lock(&_lorawan_tx_mutex);
-
     result = gnrc_netif_send(container_of(lorwan_netif, gnrc_netif_t, netif), packet);
     if (result < 1) {
-        printf("error: unable to send\n");
+        _LOGDBG("Error unable to send.\n");
         gnrc_pktbuf_release(packet);
-        // mutex_unlock(&_lorawan_tx_mutex);
-        return -1;
+        return -4;
     }
 
     /* wait for transmission confirmation */
     msg_receive(&msg);
     if (msg.type != GNRC_NETERR_MSG_TYPE) {
-        printf("error: unexpected message type %" PRIu16 "\n", msg.type);
-        // gnrc_pktbuf_release(packet);
-        // mutex_unlock(&_lorawan_tx_mutex);
-        return -1;
+        _LOGDBG("Error unexpected message type %" PRIu16 ".\n", msg.type);
+        return -5;
     }
     if (msg.content.value != GNRC_NETERR_SUCCESS) {
-        printf("error: unable to send, error: (%" PRIu32 ")\n", msg.content.value);
-        // gnrc_pktbuf_release(packet);
-        // mutex_unlock(&_lorawan_tx_mutex);
-        return -1;
+        _LOGDBG("Error unable to send, error: (%" PRIu32 ").\n", msg.content.value);
+        return -6;
     }
 
-    // gnrc_pktbuf_release(packet);
-    // mutex_unlock(&_lorawan_tx_mutex);
     return 0;
+    
+}
+
+
+
+static void *_tx_thread(void *arg)
+{
+    (void)arg;
+    msg_t msg;
+    /* initialize the message queue] */
+    msg_init_queue(_tx_msg_queue, QUEUE_SIZE);
+
+
+    /* registration entry for incoming packets */
+    static gnrc_netreg_entry_t netreg_entry;
+
+    /* register for receiving  LoRaWAN packets in our rx thread */
+    gnrc_netreg_entry_init_pid(&netreg_entry,
+                               GNRC_NETREG_DEMUX_CTX_ALL,
+                               thread_getpid());
+
+    gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &netreg_entry);
+
+    /* update the pid with valid value once it is ready to receive messages */
+    tx_pid = thread_getpid();
+
+    while (1) {
+        msg_receive(&msg);
+        if (msg.type == GNRC_NETAPI_MSG_TYPE_RCV) {
+            // _handle_received_packet(pkt);
+        } else if(msg.type == SILENOS_DISPATCH_MSG) {
+            mutex_lock(&_lorawan_tx_mutex);
+            _send_lorawan_packet(data_buffer, sizeof(data_buffer));
+            mutex_unlock(&_lorawan_tx_mutex);
+        }        
+
+    }
+    /* never reached */
+    return NULL;
 }
